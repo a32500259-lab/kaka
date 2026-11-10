@@ -15,3 +15,5 @@ app=app.replaceAll("'detail-original.jpg'",`'${api}/detail-original.jpg'`);
 writeFileSync(appPath,app);
 writeFileSync(resolve(out,'.nojekyll'),'');
 console.log(`GitHub Pages files prepared at ${out}`);
+
+const aiPath=resolve(out,'ai-client.js');writeFileSync(aiPath,readFileSync(aiPath,'utf8').replace("const API_BASE='';","const API_BASE='"+api+"';"));
