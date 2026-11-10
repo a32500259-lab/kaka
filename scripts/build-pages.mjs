@@ -10,7 +10,6 @@ cpSync(resolve(root,'web'),out,{recursive:true});
 const appPath=resolve(out,'app.js');
 let app=readFileSync(appPath,'utf8');
 app=app.replaceAll("fetch('/api/product?url=",`fetch('${api}/api/product?url=`);
-app=app.replaceAll("'/api/image?url=",`'${api}/api/image?url=`);
 app=app.replaceAll("'detail-original.jpg'",`'${api}/detail-original.jpg'`);
 writeFileSync(appPath,app);
 writeFileSync(resolve(out,'.nojekyll'),'');
