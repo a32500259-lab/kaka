@@ -21,7 +21,7 @@ async function loadProduct(){
   const response=await fetch('/api/product?url='+encodeURIComponent(raw),{signal:AbortSignal.timeout(30000)});const data=await response.json();if(!response.ok)throw new Error(data.error||'상품을 불러오지 못했어요.');
   if(serial!==requestNumber||inputLink()!==raw)return false;
   loadedUrl=raw;for(const id of ['name','price','facts','images','audience','angle','customOccasion'])$(id).value='';
-  $('name').value=data.name;$('price').value=data.price;$('images').value=data.images.join('\n');$('category').value='auto';$('age').value='auto';$('occasion').value='auto';
+  $('name').value=data.name;$('price').value=data.price;$('images').value=data.images.join('\n');$('photoCount').value='3';syncPhotoOptions();$('category').value='auto';$('age').value='auto';$('occasion').value='auto';
   const generic=/큐레이터 추천 상품|지금 카카오톡 선물하기에서/.test(data.description);$('facts').value=generic?'':data.description;
   $('productDetails').open=false;syncOccasion();
   $('importStatus').textContent=`${data.name} · ${data.price||'가격 미표시'} · ${`상품 사진 ${data.images.length}장`} 불러왔어요.`;
@@ -30,7 +30,8 @@ async function loadProduct(){
  }catch(error){if(serial!==requestNumber)return false;loadedUrl='';for(const id of ['name','price','facts','images'])$(id).value='';$('importStatus').textContent=error.name==='TimeoutError'?'상품 응답이 늦어지고 있어요. 다시 불러와주세요.':error.message==='Failed to fetch'?'상품 정보를 가져오지 못했어요. 연결을 확인하고 다시 시도해주세요.':error.message;clearResult('상품을 불러오지 못했어요. 주소를 확인하고 다시 시도해주세요.');return false}
  finally{if(serial===requestNumber){loading=false;$('load').disabled=false;$('load').textContent='상품 불러오기';$('generate').disabled=false}}
 }
-function imageSet(){const urls=$('images').value.split('\n').map(x=>x.trim()).filter(Boolean);if(!urls.length)return [];if(urls.some(x=>!safeImage(x)))throw new Error('상세페이지 사진 주소를 1장 이상 넣어주세요. https:// 주소를 사용해주세요.');return urls.slice(0,Number($('photoCount').value)).map(src=>({src,alt:$('name').value+' 상품 사진'}))}
+function syncPhotoOptions(){const count=Math.min(3,new Set($('images').value.split('\n').map(x=>x.trim()).filter(Boolean)).size),old=Number($('photoCount').value)||3;$('photoCount').replaceChildren();for(let n=count;n>=1;n--){const option=document.createElement('option');option.value=n;option.textContent=n+'장';$('photoCount').append(option)}if(!count){const o=document.createElement('option');o.value=0;o.textContent='가져온 사진 없음';$('photoCount').append(o)}$('photoCount').value=String(Math.min(old,count));$('photoCount').disabled=!count;return count}
+function imageSet(){const urls=[...new Set($('images').value.split('\n').map(x=>x.trim()).filter(Boolean))];if(!urls.length)return [];if(urls.some(x=>!safeImage(x)))throw new Error('상세페이지 사진 주소를 1장 이상 넣어주세요. https:// 주소를 사용해주세요.');return urls.slice(0,Number($('photoCount').value)).map(src=>({src,alt:$('name').value+' 상품 사진'}))}
 const occasions={
  'auto':{hint:'제품의 용도와 확인된 특징에 맞춰 추천 대상과 글을 자동으로 정해요.'},
  '생일':{hint:'이미 가진 것과 겹치지 않으면서, 좋아하는 취향은 놓치지 않는 방향.',start:'이미 웬만한 건 다 있는 친구, 선물 뭐 주지 싶을 때.',end:'평소 이런 거 좋아하던 친구한테 주면 좋겠다.'},
@@ -59,21 +60,16 @@ function preparePhoto(photo){
  const job=(async()=>{
   const source=new URL(photo.src,location.href);const imageUrl=source.hostname==='st.kakaocdn.net'?'/api/image?url='+encodeURIComponent(photo.src):photo.src;const img=new Image();if(new URL(imageUrl,location.href).origin!==location.origin)img.crossOrigin='anonymous';
   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('timeout')),15000);img.onload=()=>{clearTimeout(timer);resolve()};img.onerror=()=>{clearTimeout(timer);reject(new Error('image'))};img.src=imageUrl});
-  const width=1000,sourceHeight=photo.h||img.naturalHeight,contentHeight=Math.round(sourceHeight*width/img.naturalWidth);
-  const canvas=document.createElement('canvas'),fontSize=24,padding=30,lineHeight=36;
-  canvas.width=width;const ctx=canvas.getContext('2d');ctx.font=`${fontSize}px "Malgun Gothic", sans-serif`;
-  const lines=[];let line='';for(const char of DISCLOSURE){if(ctx.measureText(line+char).width>width-padding*2){lines.push(line);line=char}else line+=char}if(line)lines.push(line);
-  const footerHeight=padding*2+lines.length*lineHeight;
-  canvas.height=contentHeight+footerHeight;ctx.fillStyle='#fff';ctx.fillRect(0,0,width,canvas.height);
-  ctx.drawImage(img,0,photo.y||0,img.naturalWidth,sourceHeight,0,0,width,contentHeight);
-  ctx.fillStyle='#505050';ctx.font=`${fontSize}px "Malgun Gothic", sans-serif`;ctx.textBaseline='top';
-  lines.forEach((text,i)=>ctx.fillText(text,padding,contentHeight+padding+i*lineHeight));
+  const width=1600,sourceHeight=photo.h||img.naturalHeight,contentHeight=Math.round(sourceHeight*width/img.naturalWidth);
+  const canvas=document.createElement('canvas'),padding=28;canvas.width=width;const ctx=canvas.getContext('2d');ctx.font='24px "Malgun Gothic", sans-serif';const fontSize=Math.min(24,24*(width-padding*2)/ctx.measureText(DISCLOSURE).width);const footerHeight=Math.ceil(fontSize+padding*2);
+  canvas.height=contentHeight+footerHeight;ctx.fillStyle='#fff';ctx.fillRect(0,0,width,canvas.height);ctx.drawImage(img,0,photo.y||0,img.naturalWidth,sourceHeight,0,0,width,contentHeight);
+  ctx.fillStyle='#505050';ctx.font=`${fontSize}px "Malgun Gothic", sans-serif`;ctx.textBaseline='middle';ctx.fillText(DISCLOSURE,padding,contentHeight+footerHeight/2);
   const blob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('encode')),'image/jpeg',.95));
   return URL.createObjectURL(blob);
  })();preparedPhotos.set(key,job);job.catch(()=>preparedPhotos.delete(key));return job;
 }
 function render(){
- if(!current)return;const selling=!current.posts||current.mode==='recommend';$('photoSection').hidden=!selling;$('productLink').hidden=!selling;
+ if(!current)return;syncPhotoOptions();const selling=!current.posts||current.mode==='recommend';$('photoSection').hidden=!selling;$('productLink').hidden=!selling;
  document.querySelectorAll('[data-kind]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.kind===(current.mode||'recommend')));b.disabled=!current.posts});
  $('modeHint').textContent=selling?'상품을 고른 이유와 링크 · 제품 사진 함께 첨부':'생활 주제로 대화하는 글 · 상품명, 구매 링크, 제품 사진 없이 복사';
  $('copyBtn').disabled=Boolean(current.dirty);$('save').disabled=Boolean(current.dirty);$('post').replaceChildren();$('photoDownloads').replaceChildren();$('rationale').textContent=current.rationale;syncOccasion();
@@ -88,7 +84,7 @@ function render(){
  });
  $('productLink').textContent='원본 상품 링크 확인 ↗';$('productLink').href=current.link;$('sourcePhoto').hidden=true;
  $('copyStatus').textContent=selling?'추천 글과 링크만 복사됩니다. 수수료 안내는 아래 사진 안에 자동 삽입됩니다.':'선택한 글만 복사됩니다. 구매 링크와 제품 사진은 붙이지 않습니다.';
- $('photoStatus').textContent=current.photos.length?'미리보기와 저장 파일 모두 사진 하단에 안내 문구가 포함됩니다.':'가져온 사진이 없어요. 상품 정보에서 사진 주소를 추가할 수 있습니다.';requestAnimationFrame(()=>resize(ta));
+ $('photoStatus').textContent=current.photos.length?`수집된 사진 ${$('images').value.split('\n').filter(Boolean).length}장 중 ${current.photos.length}장을 준비했어요. 각 사진 하단에 수수료 안내가 한 줄로 포함됩니다.`:'가져온 사진이 없어요. 상품 정보에서 사진 주소를 추가할 수 있습니다.';requestAnimationFrame(()=>resize(ta));
 }
 async function generate(){if(loading)return;if(inputLink()!==loadedUrl||!loadedUrl){if(!await loadProduct())return}if(!$('name').value.trim()){$('productDetails').open=true;$('status').textContent='상품을 먼저 불러오거나 상품명을 넣어주세요.';return}try{const photos=imageSet(),copy=buildText();current={...copy,photos,link:loadedUrl,title:$('name').value.trim()};render();window.dispatchEvent(new Event('content-ready'));$('status').textContent='상품 추천·생활 공감·고르는 기준, 세 가지 글을 준비했어요.'}catch(e){$('status').textContent=e.message;$('productDetails').open=true}}
 $('load').onclick=loadProduct;$('generate').onclick=generate;
@@ -103,3 +99,4 @@ $('saved').onclick=()=>{$('history').hidden=false;$('historylist').replaceChildr
 document.querySelectorAll('[data-kind]').forEach(button=>button.onclick=()=>{if(!current?.posts)return;current.mode=button.dataset.kind;render()});
 
 $('photoCount').addEventListener('change',()=>{if(current){current.photos=imageSet();render();}});
+$('images').addEventListener('input',syncPhotoOptions);
