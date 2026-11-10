@@ -1,8 +1,6 @@
 import {makeCopy,makePosts,postForMode,livingProfile,shortName,storyFor} from './copy-engine.js';
 const $=id=>document.getElementById(id);
-const SAMPLE='https://gift-link.kakao.com/c/IJXwR307';
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
-const ORIGINAL='https://st.kakaocdn.net/product/gift/editor/20261029145607_a767704706514ec38cc0a2dedcf91b40.jpg';
 const fields=['url','name','category','price','facts','images','age','occasion','audience','angle','photoCount','customOccasion'];
 let loadedUrl='',current=null,drafts=[];
 try{drafts=JSON.parse(localStorage.getItem('gift-note-drafts-v2')||'[]');if(!Array.isArray(drafts))drafts=[]}catch{}
@@ -25,15 +23,14 @@ async function loadProduct(){
   loadedUrl=raw;for(const id of ['name','price','facts','images','audience','angle','customOccasion'])$(id).value='';
   $('name').value=data.name;$('price').value=data.price;$('images').value=data.images.join('\n');$('category').value='auto';$('age').value='auto';$('occasion').value='auto';
   const generic=/큐레이터 추천 상품|지금 카카오톡 선물하기에서/.test(data.description);$('facts').value=generic?'':data.description;
-  if(raw===SAMPLE){$('facts').value='무선 사용\nType-C 충전\n220g 무게\n전용 파우치 포함';$('images').value=ORIGINAL}
   $('productDetails').open=false;syncOccasion();
-  $('importStatus').textContent=`${data.name} · ${data.price||'가격 미표시'} · ${raw===SAMPLE?'확인해 둔 상세사진 3곳':`대표 사진 ${data.images.length}장`} 불러왔어요.`;
+  $('importStatus').textContent=`${data.name} · ${data.price||'가격 미표시'} · ${`상품 사진 ${data.images.length}장`} 불러왔어요.`;
   $('status').textContent='상품을 불러왔어요. 추천 글 만들기를 누르면 이 상품으로 작성됩니다.';$('rationale').textContent='불러온 상품으로 추천 글을 만들 수 있어요.';
   window.dispatchEvent(new Event('product-loaded'));return true;
- }catch(error){if(serial!==requestNumber)return false;loadedUrl='';for(const id of ['name','price','facts','images'])$(id).value='';$('importStatus').textContent=error.name==='TimeoutError'?'상품 응답이 늦어지고 있어요. 다시 불러와주세요.':error.message;clearResult('상품을 불러오지 못했어요. 주소를 확인하고 다시 시도해주세요.');return false}
+ }catch(error){if(serial!==requestNumber)return false;loadedUrl='';for(const id of ['name','price','facts','images'])$(id).value='';$('importStatus').textContent=error.name==='TimeoutError'?'상품 응답이 늦어지고 있어요. 다시 불러와주세요.':error.message==='Failed to fetch'?'상품 정보를 가져오지 못했어요. 연결을 확인하고 다시 시도해주세요.':error.message;clearResult('상품을 불러오지 못했어요. 주소를 확인하고 다시 시도해주세요.');return false}
  finally{if(serial===requestNumber){loading=false;$('load').disabled=false;$('load').textContent='상품 불러오기';$('generate').disabled=false}}
 }
-function imageSet(){const urls=$('images').value.split('\n').map(x=>x.trim()).filter(Boolean);if(!urls.length)return [];if(urls.some(x=>!safeImage(x)))throw new Error('상세페이지 사진 주소를 1장 이상 넣어주세요. https:// 주소를 사용해주세요.');if(loadedUrl===SAMPLE&&urls.length===1&&urls[0]===ORIGINAL)return[{src:'detail-original.jpg',y:0,h:1325,alt:'헬로키티 빗고데기와 전용 파우치'},{src:'detail-original.jpg',y:14510,h:1430,alt:'책상에서 무선으로 사용하는 헬로키티 빗고데기'},{src:'detail-original.jpg',y:18700,h:1250,alt:'헬로키티 빗고데기 전용 파우치 구성'}].slice(0,Number($('photoCount').value));return urls.slice(0,Number($('photoCount').value)).map(src=>({src,alt:$('name').value+' 상품 사진'}))}
+function imageSet(){const urls=$('images').value.split('\n').map(x=>x.trim()).filter(Boolean);if(!urls.length)return [];if(urls.some(x=>!safeImage(x)))throw new Error('상세페이지 사진 주소를 1장 이상 넣어주세요. https:// 주소를 사용해주세요.');return urls.slice(0,Number($('photoCount').value)).map(src=>({src,alt:$('name').value+' 상품 사진'}))}
 const occasions={
  'auto':{hint:'제품의 용도와 확인된 특징에 맞춰 추천 대상과 글을 자동으로 정해요.'},
  '생일':{hint:'이미 가진 것과 겹치지 않으면서, 좋아하는 취향은 놓치지 않는 방향.',start:'이미 웬만한 건 다 있는 친구, 선물 뭐 주지 싶을 때.',end:'평소 이런 거 좋아하던 친구한테 주면 좋겠다.'},
@@ -94,7 +91,7 @@ function render(){
  $('photoStatus').textContent=current.photos.length?'미리보기와 저장 파일 모두 사진 하단에 안내 문구가 포함됩니다.':'가져온 사진이 없어요. 상품 정보에서 사진 주소를 추가할 수 있습니다.';requestAnimationFrame(()=>resize(ta));
 }
 async function generate(){if(loading)return;if(inputLink()!==loadedUrl||!loadedUrl){if(!await loadProduct())return}if(!$('name').value.trim()){$('productDetails').open=true;$('status').textContent='상품을 먼저 불러오거나 상품명을 넣어주세요.';return}try{const photos=imageSet(),copy=buildText();current={...copy,photos,link:loadedUrl,title:$('name').value.trim()};render();window.dispatchEvent(new Event('content-ready'));$('status').textContent='상품 추천·생활 공감·고르는 기준, 세 가지 글을 준비했어요.'}catch(e){$('status').textContent=e.message;$('productDetails').open=true}}
-$('load').onclick=loadProduct;$('example').onclick=async()=>{$('url').value=SAMPLE;if(await loadProduct())await generate()};$('generate').onclick=generate;
+$('load').onclick=loadProduct;$('generate').onclick=generate;
 $('url').addEventListener('input',()=>{if(inputLink()!==loadedUrl)clearResult('새 주소를 입력했어요. 불러오기를 눌러주세요.')});
 $('url').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();loadProduct().then(ok=>{if(ok)window.dispatchEvent(new Event('product-loaded'))})}});
 for(const id of fields.filter(id=>id!=='url'&&id!=='photoCount'))$(id).addEventListener('input',()=>{if(current){current.dirty=true;$('copyBtn').disabled=true;$('save').disabled=true;$('status').textContent='입력이 바뀌었어요. 추천 글 만들기를 눌러 반영해주세요.'}});
