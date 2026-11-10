@@ -33,10 +33,10 @@ function imageSet(){const urls=[...new Set($('images').value.split('\n').map(x=>
 function syncOccasion(){const value=$('occasion').value;$('occasionHelp').textContent=value==='auto'?'상품에 맞는 상황을 골라 후크·전개·무드를 매번 새롭게 조합해요.':value==='직접'?'적어주신 상황을 글의 출발점으로 사용해요.':sceneFor(value)?.hint||'상품의 쓰임과 선택한 상황을 함께 생각해요.';$('customOccasionWrap').hidden=value!=='직접'}
 function buildText(){
  const input=Object.fromEntries(['name','facts','occasion','customOccasion'].map(id=>[id,$(id).value]));
- const posts=makePosts(input);posts.recommend+='\n\n'+loadedUrl;
+ const posts=makePosts(input);posts.recommend+='\n\n카카오톡 선물하기 : '+loadedUrl;
  return {sections:[posts.recommend],posts,mode:'recommend',rationale:describePlan()};
 }
-function exportText(){return postForMode(current).replaceAll(DISCLOSURE,'').replace(/\n{3,}/g,'\n\n').trim()}
+function exportText(){return postForMode(current).replaceAll(DISCLOSURE,'').replace(/(^|\n)(https:\/\/gift-link\.kakao\.com\/c\/[^\s]+)/g,'$1카카오톡 선물하기 : $2').replace(/\n{3,}/g,'\n\n').trim()}
 function updateCount(){const count=Array.from(exportText()).length;$('textCount').textContent=`${count}자 · 공백·링크 포함`;$('lengthHelp').textContent=count>500?'기본 게시물 기준인 500자를 넘었어요. 본문을 조금 줄여주세요.':'짧은 게시물용으로 준비했어요.';$('textCount').classList.toggle('over',count>500)}
 const preparedPhotos=new Map();
 function preparePhoto(photo){
