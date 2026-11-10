@@ -1,4 +1,4 @@
-import {makePosts,postForMode,shortName,describePlan,sceneFor} from './copy-engine.js?v=voice5';
+import {makePosts,postForMode,shortName,describePlan,sceneFor} from './copy-engine.js?v=human7';
 const $=id=>document.getElementById(id);
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
 const fields=['url','name','category','price','facts','images','age','occasion','audience','angle','photoCount','customOccasion'];
@@ -30,7 +30,7 @@ async function loadProduct(){
 }
 function syncPhotoOptions(){const count=Math.min(3,new Set($('images').value.split('\n').map(x=>x.trim()).filter(Boolean)).size),old=Number($('photoCount').value)||3;$('photoCount').replaceChildren();for(let n=count;n>=1;n--){const option=document.createElement('option');option.value=n;option.textContent=n+'장';$('photoCount').append(option)}if(!count){const o=document.createElement('option');o.value=0;o.textContent='가져온 사진 없음';$('photoCount').append(o)}$('photoCount').value=String(Math.min(old,count));$('photoCount').disabled=!count;return count}
 function imageSet(){const urls=[...new Set($('images').value.split('\n').map(x=>x.trim()).filter(Boolean))];if(!urls.length)return [];if(urls.some(x=>!safeImage(x)))throw new Error('상세페이지 사진 주소를 1장 이상 넣어주세요. https:// 주소를 사용해주세요.');return urls.slice(0,Number($('photoCount').value)).map(src=>({src,alt:$('name').value+' 상품 사진'}))}
-function syncOccasion(){const value=$('occasion').value;$('occasionHelp').textContent=value==='auto'?'상품에 맞는 상황을 골라 후크·전개·무드를 매번 새롭게 조합해요.':value==='직접'?'적어주신 상황을 글의 출발점으로 사용해요.':sceneFor(value)?.hint||'상품의 쓰임과 선택한 상황을 함께 생각해요.';$('customOccasionWrap').hidden=value!=='직접'}
+function syncOccasion(){const value=$('occasion').value;$('occasionHelp').textContent=value==='auto'?'받는 사람과 선물 고르는 이유가 한 흐름으로 이어지게 써요.':value==='직접'?'적어주신 상황을 글의 출발점으로 사용해요.':sceneFor(value)?.hint||'상품의 쓰임과 선택한 상황을 함께 생각해요.';$('customOccasionWrap').hidden=value!=='직접'}
 function buildText(){
  const input=Object.fromEntries(['name','facts','occasion','customOccasion'].map(id=>[id,$(id).value]));
  const posts=makePosts(input);posts.recommend+='\n\n카카오톡 선물하기 : '+loadedUrl;

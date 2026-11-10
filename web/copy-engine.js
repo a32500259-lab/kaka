@@ -1,8 +1,5 @@
-import {variedPosts,variedCopy,describePlan,sceneFor,scenes,productLens} from './variation.js?v=voice5';
+import {variedPosts,variedCopy,describePlan,sceneFor,scenes,productLens} from './variation.js?v=human7';
 export {describePlan,sceneFor,scenes,productLens};
-import {storyFor,verifiedSentence} from './editorial.js';
-import {livingProfile} from './lifestyle.js';
-export {livingProfile,storyFor};
 // Product facts select the subject; gift occasions only change the angle.
 // Never turn title keywords into claims about personal use or performance.
 const money=/(?:[₩￦]\s*\d|\d[\d,.]*\s*(?:만\s*)?원|가격|최저가|할인가|가성비|무료배송|할인율|\d+\s*%)/;

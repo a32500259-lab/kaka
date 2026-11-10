@@ -1,3 +1,4 @@
+import {giftNarrative} from './gift-narrative.js?v=human7';
 import {livingProfile} from './lifestyle.js';
 
 // Original writing material. Never copies captions or invents use/purchase history.
@@ -27,12 +28,9 @@ export const scenes=[
 const aliases={'부담없이':'가벼운 감사'};
 export function sceneFor(id){return scenes.find(s=>s.id===(aliases[id]||id))}
 const pick=a=>a[Math.floor(Math.random()*a.length)];
+const nextIndex=(n,old)=>pick(Array.from({length:n},(_,i)=>i).filter(i=>i!==old));
 let previous={};try{const value=JSON.parse(globalThis.localStorage?.getItem('gift-writing-plan-v1')||'{}');if(value&&typeof value==='object')previous=value}catch{}
 let lastPlan;
-const hookNames=['질문으로 시작','짧은 장면','가벼운 팩폭','취향 고백'];
-const layoutNames=['짧은 호흡','작은 이야기','선택의 비교','혼잣말 대화'];
-const moodNames=['장난스럽게','다정하게','담백하고 쿨하게'];
-const nextIndex=(n,old)=>pick(Array.from({length:n},(_,i)=>i).filter(i=>i!==old));
 function lens(name){
  if(/아기|유아|키즈|핑크퐁|뽀로로|아기상어/.test(name))return {kind:'kids',emoji:['🎁','🛁','✨'],reason:['아이 취향 맞추는 건 자신 있어도 집에 이미 있는지까지 맞히는 건 어렵지 ㅋㅋ','아이 줄 선물을 챙기면서 친구의 하루도 같이 생각해보고 싶어.','귀여운 얼굴에 눈길 가는 건 인정. 고르기 전에는 사용 연령부터.'],checks:['사용할 아이의 나이','이미 갖고 있는지','부모가 확인할 사용 안내'],question:'아이 선물은 부모한테 먼저 물어보는 편이야, 깜짝으로 고르는 편이야?'};
  if(/손난로/.test(name))return {kind:'warmer',emoji:['🌰','🧤','🎁'],reason:['추운 날 주머니에서 꺼낼 물건이 귀엽기까지 하면 괜히 한 번 더 보게 되지.','밖에서 오래 지내는 사람을 떠올리면 이런 선물도 생각나.','귀여운 모양에 끌려도 들고 다닐 크기는 확인하고 고르자.'],checks:['들고 다닐 크기와 무게','충전 방식','제품 사용 안내'],question:'겨울 선물은 들고 다니는 게 좋아, 집에서 쓰는 게 좋아?'};
@@ -57,53 +55,24 @@ function lens(name){
 }
 export function productLens(name){return lens(name)}
 function planFor(input){
- const l=lens(input.name||'');let pool=scenes;
+ const l=lens(input.name||'');let pool=scenes.filter(s=>['생일','집들이','가벼운 감사','문득','실용파','캐릭터'].includes(s.id));
  if(l.kind==='kids')pool=scenes.filter(s=>['육아친구','생일','가벼운 감사','문득','캐릭터'].includes(s.id));
  else if(l.kind==='warmer')pool=scenes.filter(s=>['추운날','응원','문득','퇴근길','연인'].includes(s.id));
- else pool=scenes.filter(s=>!['육아친구','추운날','부모님','연인'].includes(s.id));
+ else if(l.kind==='hair')pool=scenes.filter(s=>['생일','문득','실용파','캐릭터'].includes(s.id));
+ if(!/키티|산리오|캐릭터|핑크퐁|뽀로로|아기상어|쿠로미|시나모롤/.test(input.name||''))pool=pool.filter(s=>s.id!=='캐릭터');
  let scene=sceneFor(input.occasion);if(input.occasion==='직접'){if(!input.customOccasion?.trim())throw new Error('글의 출발점이 될 상황을 한 줄 적어주세요.');scene={id:'직접',label:'직접 적은 상황',hooks:Array(4).fill(input.customOccasion.trim()),bridge:'이 상황에서 쓸 물건을 생각하며 골라보려고.',talk:input.customOccasion.trim(),advice:'바로 고르기보다 실제로 필요한 순간부터 한번 떠올려보자.'}}
  if(!scene)scene=pick(pool.filter(s=>s.id!==previous.scene));
- const p={scene,hook:nextIndex(4,previous.hook),layout:nextIndex(4,previous.layout),mood:nextIndex(3,previous.mood),lens:l};
- previous={scene:scene.id,hook:p.hook,layout:p.layout,mood:p.mood};try{globalThis.localStorage?.setItem('gift-writing-plan-v1',JSON.stringify(previous))}catch{}lastPlan=p;return p;
+ const p={scene,variant:nextIndex(3,previous.variant),lens:l};
+ previous={scene:scene.id,variant:p.variant};try{globalThis.localStorage?.setItem('gift-writing-plan-v1',JSON.stringify(previous))}catch{}lastPlan=p;return p;
 }
-export function describePlan(){return lastPlan?`${lastPlan.scene.label} · ${hookNames[lastPlan.hook]} · ${layoutNames[lastPlan.layout]} · ${moodNames[lastPlan.mood]}`:''}
+export function describePlan(){return lastPlan?`${lastPlan.scene.label} · 선물 고민 하나로 이어 쓰기 · 전개 ${lastPlan.variant+1}`:''}
 function factsFor(input){
  const source=(input.name+'\n'+(input.facts||'')).split(/\n|[.!?]/).filter(s=>!/(미지원|불가|별도|제외|없음|아닌)/.test(s)).join(' '),a=[];
  const rules=[[/보조배터리/,'보조배터리 기능'],[/무선충전|무선 충전/,'무선 충전'],[/무선(?!충전)/,'무선 사용'],[/밝기\s*조절/,'밝기 조절'],[/분리\s*세척/,'분리 세척'],[/접이식/,'접이식 구조'],[/디스펜서/,'디스펜서'],[/샤워볼/,'샤워볼'],[/파우치\s*(포함|구성|세트)/,'파우치 포함 구성']];
  for(const [re,text] of rules)if(re.test(source))a.push(text);return a.slice(0,2);
 }
-function format({head,context,subject,end,checks},layout){
- if(layout===0)return [head,context,subject,end].filter(Boolean).join('\n\n');
- if(layout===1)return [head,[context,subject].filter(Boolean).join(' '),end].filter(Boolean).join('\n\n');
- if(layout===2)return [head,context,subject,`마음에 드는 이유만큼 같이 볼 것.\n${checks.slice(0,2).join(' · ')}`,end].filter(Boolean).join('\n\n');
- return [head,context,`“이거 괜찮지 않아?”\n“${checks[0]}도 한번 보자.”`,subject,end].filter(Boolean).join('\n\n');
-}
-function productSentence(input,title,l){
- const topic=(title.charCodeAt(title.length-1)-0xac00)%28?'은':'는';const facts=factsFor(input),source=input.name+' '+(input.facts||'');
- if(l.kind==='kids'&&facts.includes('디스펜서')&&facts.includes('샤워볼'))return `${title}${topic} 디스펜서랑 샤워볼이 함께 들어 있는 구성이야.`;
- if(l.kind==='warmer'&&facts.includes('보조배터리 기능'))return `${title}${topic} 손을 데우고 보조배터리로도 쓸 수 있어.`;
- if(facts.includes('밝기 조절'))return `${title}${topic} 밝기를 조절할 수 있는 타입이야.`;
- if(facts.includes('무선 사용'))return `${title}${topic} 무선으로 쓸 수 있어.`;
- if(facts.includes('분리 세척'))return `${title}${topic} 분리해서 세척할 수 있는 구조야.`;
- if(facts.includes('접이식 구조'))return `${title}${topic} 접어서 보관할 수 있는 타입이야.`;
- if(facts.includes('파우치 포함 구성'))return `${title}${topic} 파우치가 함께 들어 있는 구성이야.`;
- if(l.kind==='dryer')return pick([`수건 말고 욕실 가전은 어떨까 싶어서, ${title}도 살펴보는 중이야.`,`${title}처럼 욕실에서 쓰는 가전도 선물로 생각해볼 수 있겠어.`]);
- if(l.kind==='kids')return `${title}처럼 아이가 좋아하는 캐릭터에서 출발해보는 것도 괜찮겠어.`;
- if(l.kind==='scent')return `${title}${topic} 평소 좋아하는 향이랑 맞는지 먼저 보고 싶어.`;
- if(l.kind==='storage')return `${title}${topic} 넣을 물건을 정해두고 크기를 골라보고 싶어.`;
- if(l.kind==='cup')return `${title} 하나를 골라도 집에서 쓸지 들고 다닐지에 따라 보는 게 달라져.`;
- return pick([`${title}${topic} 언제 쓰게 될지부터 생각하면서 보고 있어.`,`${title} 쪽으로 고른다면 평소 좋아하던 색이나 디자인에 맞춰주고 싶어.`]);
-}
 function compose(input,title,p,kind){
- const {scene:s,lens:l}=p;const fact=factsFor(input);
- let head=s.hooks[p.hook],context=s.bridge,subject=productSentence(input,title,l),end;
- if(kind==='recommend'){subject+=' '+l.reason[p.mood];end=p.hook!==0&&p.mood===0?l.question:p.mood===1?s.advice:Math.random()<.5?`고르기 전에 ${l.checks[0]}부터 확인해보자.`:'';if(p.layout===2)end=p.hook!==0?l.question:'';}
- if(kind==='conversation'){context=s.talk;subject=s.advice;end=p.mood===0?pick(['다들 이럴 때 어떻게 골라?','저장만 해두는 물건, 하나쯤 있지 않아?']):p.mood===1?'오늘 당장 정하지 않아도 괜찮아. 내 마음도 조금 쉬면서 고르자.':'마음에 드는 것과 지금 필요한 걸 나눠보면 선택은 조금 쉬워져.'}
- if(kind==='guide'){context=s.bridge;subject=`${l.checks.map((x,i)=>`${i+1}. ${x}`).join('\n')}`;end=p.mood===0?'구경하는 눈은 바빠도 고를 기준은 이 정도만 챙겨보자.':p.mood===1?'받을 사람이 쓰는 모습을 떠올리면 답이 조금씩 보일 거야.':'이 세 가지부터 확인하고 후보를 줄여보자.'}
- let text=format({head,context,subject,end,checks:l.checks},kind==='guide'?1:p.layout);
- if(p.mood===0&&p.layout!==3&&Math.random()<.28&&!text.includes('ㅋㅋ'))text+=' ㅋㅋ';
- if(Math.random()<.72){const e=pick(l.emoji);text=p.layout===0?text+' '+e:text.replace(head,head+' '+e)}
- return text.replace(/\s{2,}/g,m=>m.includes('\n')?m:' ').trim();
+ return giftNarrative(input,title,p,factsFor(input),kind);
 }
 export function variedPosts(input,title){const p=planFor(input);return Object.fromEntries(['recommend','conversation','guide'].map(kind=>[kind,compose(input,title,p,kind)]))}
 export function variedCopy(input,title){const p=planFor(input);return compose(input,title,p,input.kind||'recommend')}
