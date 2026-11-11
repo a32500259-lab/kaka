@@ -3,7 +3,7 @@ import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,p
 const postForMode=current=>current?.posts?current.posts[current.mode||'recommend']||'':current?.postText??[...(current?.sections||[]),current?.link].filter(Boolean).join('\n\n');
 const $=id=>document.getElementById(id);
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
-const fields=['url','name','category','price','facts','images','age','occasion','audience','angle','photoCount','customOccasion'];
+const fields=['url','name','category','price','facts','images','age','occasion','audience','angle','photoCount','customOccasion','targetLength'];
 let loadedUrl='',current=null,drafts=[],loadedProduct=null,generating=false,generationController=null;const recentDrafts=[];
 try{drafts=JSON.parse(localStorage.getItem('gift-note-drafts-v2')||'[]');if(!Array.isArray(drafts))drafts=[]}catch{}
 $('count').textContent=drafts.length;
@@ -71,7 +71,7 @@ async function generate(){
  if(loading||generating)return;if(inputLink()!==loadedUrl||!loadedUrl){if(!await loadProduct())return}
  if(!loadedProduct){$('status').textContent='상품을 다시 불러와주세요.';return}
  const controller=new AbortController();generationController=controller;generating=true;
- const input=Object.fromEntries(['facts','age','occasion','customOccasion'].map(id=>[id,$(id).value]));const link=loadedUrl,serial=requestNumber;
+ const input=Object.fromEntries(['facts','age','occasion','customOccasion','targetLength'].map(id=>[id,$(id).value]));const link=loadedUrl,serial=requestNumber;
  const previous=current;const button=$('generate');button.disabled=true;$('regenerate').disabled=true;button.textContent='Gemini가 작성 중…';$('post').setAttribute('aria-busy','true');
  let timeout=setTimeout(()=>controller.abort('timeout'),150000);
  try{
@@ -82,7 +82,7 @@ async function generate(){
   $('status').textContent='Gemini가 상품 사진과 설명을 읽고, 글의 흐름을 다듬고 있어요…';
   const result=await requestGiftPosts({...input,link,visuals,recentDrafts},controller.signal);
   if(controller.signal.aborted||serial!==requestNumber||inputLink()!==link)return;
-  if(['facts','age','occasion','customOccasion'].some(id=>$(id).value!==input[id])){$('status').textContent='작성 중 선택이 바뀌었어요. 다시 만들기를 눌러주세요.';return}
+  if(['facts','age','occasion','customOccasion','targetLength'].some(id=>$(id).value!==input[id])){$('status').textContent='작성 중 선택이 바뀌었어요. 다시 만들기를 눌러주세요.';return}
   const photos=imageSet();current={...result,mode:'recommend',sections:[result.posts.recommend],photos,link,title:loadedProduct.name};
   recentDrafts.push(result.posts.recommend);if(recentDrafts.length>2)recentDrafts.shift();render();window.dispatchEvent(new Event('content-ready'));
   $('status').textContent=`Gemini가 새로 작성했어요 · 상품 사진 ${result.visualSegments}개 구간 참고`+(failures.length?' · 일부 사진은 읽지 못해 제외했어요.':'');
@@ -104,7 +104,7 @@ $('url').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preve
 for(const id of fields.filter(id=>id!=='url'&&id!=='photoCount'))$(id).addEventListener('input',()=>{if(current){current.dirty=true;$('copyBtn').disabled=true;$('save').disabled=true;$('status').textContent='입력이 바뀌었어요. 추천 글 만들기를 눌러 반영해주세요.'}});
 $('copyBtn').onclick=async()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}try{await navigator.clipboard.writeText(exportText());$('copyStatus').textContent=current.posts&&current.mode!=='recommend'?'복사 완료! 선택한 글만 스레드에 붙여넣으세요.':'복사 완료! 스레드에 붙여넣고 아래 사진을 따로 첨부해주세요.'}catch{$('copyText').focus();$('copyText').select();$('copyStatus').textContent='글을 선택했어요. Ctrl+C로 복사해주세요.'}};
 $('save').onclick=()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}const draft={...structuredClone(current),fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),date:new Date().toLocaleString('ko-KR')};try{const next=[draft,...drafts].slice(0,30);localStorage.setItem('gift-note-drafts-v2',JSON.stringify(next));drafts=next;$('count').textContent=drafts.length;$('status').textContent='수정한 글과 사진 구성을 이 브라우저에 저장했어요.'}catch{$('status').textContent='저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}};
-$('saved').onclick=()=>{$('history').hidden=false;$('historylist').replaceChildren();if(!drafts.length)$('historylist').textContent='아직 저장한 초안이 없어요.';drafts.forEach(d=>{const b=document.createElement('button');b.textContent=d.title+' · '+d.date;b.onclick=()=>{for(const id of fields)$(id).value=d.fields[id]||'';loadedUrl=d.link;current=structuredClone(d);render();$('history').hidden=true;$('rationale').scrollIntoView({behavior:'smooth'});$('importStatus').textContent=d.title+' · 저장된 상품 정보';$('status').textContent='저장한 글과 사진을 불러왔어요.'};$('historylist').appendChild(b)});$('history').scrollIntoView({behavior:'smooth'})};$('closeHistory').onclick=()=>{$('history').hidden=true};$('occasion').addEventListener('change',syncOccasion);window.addEventListener('resize',()=>document.querySelectorAll('.posttext').forEach(resize));$('url').value='';clearResult('상품 링크를 넣어 시작해보세요.');
+$('saved').onclick=()=>{$('history').hidden=false;$('historylist').replaceChildren();if(!drafts.length)$('historylist').textContent='아직 저장한 초안이 없어요.';drafts.forEach(d=>{const b=document.createElement('button');b.textContent=d.title+' · '+d.date;b.onclick=()=>{for(const id of fields)$(id).value=d.fields[id]||(id==='targetLength'?'100':'');loadedUrl=d.link;current=structuredClone(d);render();$('history').hidden=true;$('rationale').scrollIntoView({behavior:'smooth'});$('importStatus').textContent=d.title+' · 저장된 상품 정보';$('status').textContent='저장한 글과 사진을 불러왔어요.'};$('historylist').appendChild(b)});$('history').scrollIntoView({behavior:'smooth'})};$('closeHistory').onclick=()=>{$('history').hidden=true};$('occasion').addEventListener('change',syncOccasion);window.addEventListener('resize',()=>document.querySelectorAll('.posttext').forEach(resize));$('url').value='';clearResult('상품 링크를 넣어 시작해보세요.');
 
 
 document.querySelectorAll('[data-kind]').forEach(button=>button.onclick=()=>{if(!current?.posts)return;current.mode=button.dataset.kind;render()});

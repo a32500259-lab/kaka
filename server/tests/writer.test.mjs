@@ -83,3 +83,17 @@ test('expressive ellipses and exclamation marks survive plain text export',async
  assert.ok(result.posts.recommend.includes('보일까,,,'));
  assert.ok(result.posts.recommend.includes('싶다!!!'));
 });
+
+test('all three length choices reach Gemini alongside the same voice instructions',async()=>{
+ for(const targetLength of [100,200,300]){
+  let request;
+  const result=await generateGiftPosts({...input,targetLength},evidence,env,{fetcher:async(url,options)=>{request=JSON.parse(options.body);return answer(good)}});
+  assert.equal(JSON.parse(request.contents[0].parts[0].text).options.targetLength,targetLength);
+  assert.match(request.systemInstruction.parts[0].text,/동일한 말투/);
+  assert.match(request.systemInstruction.parts[0].text,/가격과 URL/);
+  assert.equal(result.targetLength,targetLength);
+ }
+ let calls=0;
+ await assert.rejects(generateGiftPosts({...input,targetLength:999},evidence,env,{fetcher:async()=>{calls++;return answer(good)}}),e=>e.code==='INVALID_INPUT');
+ assert.equal(calls,0);
+});
