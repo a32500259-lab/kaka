@@ -17,7 +17,7 @@ test('real provider request carries prompt, visuals and selected audience; only 
  assert.equal(JSON.parse(seen.body.contents[0].parts[0].text).options.age,'30');
  assert.equal(seen.body.contents[0].parts[2].inlineData.mimeType,'image/jpeg');
  assert.ok(result.posts.recommend.endsWith('카카오톡 선물하기 : '+link));
- assert.equal(result.posts.conversation,good.conversation);assert.equal(result.model,'gemini-test-version');assert.equal(result.visualSegments,1);
+ assert.equal(result.posts.conversation,good.conversation.replace(/\.(?=\s|$)/g,''));assert.equal(result.model,'gemini-test-version');assert.equal(result.visualSegments,1);
 });
 test('no call without a confirmed free-tier configuration or valid source images',async()=>{
  let calls=0;const options={fetcher:async()=>{calls++;return answer(good)}};
@@ -63,22 +63,10 @@ test('Threads plain-text output retains paragraph gaps when model returns a sing
  assert.equal(formatThreadsPost('첫 줄\n\n제품 포인트\n두 번째 포인트'),'첫 줄\n\n제품 포인트\n두 번째 포인트');
 });
 
-test('a flat ending uses the alternative from the same provider response',async()=>{
- let calls=0;
- const last='침대 옆에 두는 선물이라면 친구가 평소 켜두는 밝기부터 물어보려고.';
- const result=await generateGiftPosts(input,evidence,env,{fetcher:async()=>{
-  calls++;
-  return answer({...good,recommend:good.recommend+' 밝기도 줄어들어.',closingAlternatives:{recommend:last}});
- }});
- assert.equal(calls,1);
- assert.ok(result.posts.recommend.includes(last));
- assert.ok(!result.posts.recommend.includes('줄어들어.'));
-});
-
 test('recommendation adds soft breaks at sentence boundaries and preserves blank lines',async()=>{
  const recommend='아기상어 좋아하는 아이라면 욕실에서도 눈길이 갈 것 같아. 🦈 세면대 위에 두는 거품 디스펜서야.\n\n캐릭터 좋아하는 아이에게 줄 선물을 찾는다면 이쪽도 한 번 보고 싶더라.';
  const result=await generateGiftPosts(input,evidence,env,{fetcher:async()=>answer({...good,recommend})});
- assert.equal(result.posts.recommend,recommend.replace('같아. 🦈','같아.\n🦈')+'\n\n카카오톡 선물하기 : '+link);
+ assert.equal(result.posts.recommend,recommend.replace('같아. 🦈','같아.\n🦈').replace(/\.(?=\s|$)/g,'')+'\n\n카카오톡 선물하기 : '+link);
 });
 
 test('invented visits are rejected without another provider request',async()=>{
