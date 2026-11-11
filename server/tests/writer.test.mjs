@@ -75,3 +75,9 @@ test('a cramped recommendation is rewritten into paragraphs before adding the li
  assert.equal(calls,2);
  assert.equal(result.posts.recommend,good.recommend+'\n\n카카오톡 선물하기 : '+link);
 });
+
+test('recommendation adds soft breaks at sentence boundaries and preserves blank lines',async()=>{
+ const recommend='아기상어 좋아하는 아이라면 욕실에서도 눈길이 갈 것 같아. 🦈 세면대 위에 두는 거품 디스펜서야.\n\n캐릭터 좋아하는 아이에게 줄 선물을 찾는다면 이쪽도 한 번 보고 싶더라.';
+ const result=await generateGiftPosts(input,evidence,env,{fetcher:async()=>answer({...good,recommend})});
+ assert.equal(result.posts.recommend,recommend.replace('같아. 🦈','같아.\n🦈')+'\n\n카카오톡 선물하기 : '+link);
+});
