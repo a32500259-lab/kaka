@@ -53,7 +53,15 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  const visuals=imageParts(input,evidence);
  if(!visuals.length)throw new WriterError('상품 사진을 준비하지 못했어요. 다시 불러온 뒤 시도해주세요.',400,'NO_IMAGES');
  const runtimePrompt=(env.WRITER_PROMPT||'한국어 Threads 선물 큐레이터 글을 자연스럽게 작성한다.').split('\n').filter(line=>!line.includes('카카오톡 선물하기 :')).join('\n');
- const body={systemInstruction:{parts:[{text:runtimePrompt+'\n'+contract}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestInput(input,evidence))},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema:schema}};
+ const targetLength=Number(input.targetLength||100);
+ const minimum=Math.round(targetLength*.9);
+ const maximum=Math.round(targetLength*1.1);
+ const lengthInstruction=`이번 요청의 최우선 분량은 본문마다 ${minimum}~${maximum}자다. 기준 예시의 문장 길이만 모방해서 100자로 끝내지 않는다. ${targetLength===300?'각 글에 약 90~110자씩 세 문단을 쓴다. 발견과 관심을 가진 상황, 확인된 특징으로 고르는 이유, 같은 취향에서 이어지는 가벼운 마무리로 전개한다.':targetLength===200?'각 글에 약 90~110자씩 두 문단을 쓴다. 첫 문단에서 구체적 상황과 발견, 두 번째에서 그 특징과 이어지는 선택 고민을 말한다.':'짧은 두 문단으로 쓴다.'} 문단 안은 의미 단위 줄바꿈. 2~3개 이모지, 가격 제외, 허위 체험 금지, 자연스러운 말투와 부호 규칙을 모두 유지한다. 반환 전에 본문 길이를 점검해 범위에 맞게 편집한다.`;
+ const responseSchema=structuredClone(schema);
+ for(const kind of ['recommend','conversation','guide']){
+  responseSchema.properties[kind].description=`필수 분량 ${minimum}~${maximum}자. 공백 포함, 줄바꿈 제외. ${lengthInstruction}`;
+ }
+ const body={systemInstruction:{parts:[{text:runtimePrompt+'\n'+contract+'\n'+lengthInstruction}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestInput(input,evidence))},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema}};
  let response;
   try{response=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify(body),signal:AbortSignal.timeout(65000)})}catch(error){throw new WriterError(error.name==='TimeoutError'?'Gemini 응답이 늦습니다. 잠시 후 다시 시도해주세요.':'Gemini에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',504,'AI_TIMEOUT')}
  let result;try{result=await response.json()}catch{throw new WriterError('Gemini 응답을 읽지 못했습니다.',502,'AI_INVALID_RESPONSE')}
