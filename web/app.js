@@ -34,7 +34,16 @@ function syncPhotoOptions(){const count=Math.min(3,new Set($('images').value.spl
 function imageSet(){const urls=[...new Set($('images').value.split('\n').map(x=>x.trim()).filter(Boolean))];if(!urls.length)return [];if(urls.some(x=>!safeImage(x)))throw new Error('상세페이지 사진 주소를 1장 이상 넣어주세요. https:// 주소를 사용해주세요.');return urls.slice(0,Number($('photoCount').value)).map(src=>({src,alt:$('name').value+' 상품 사진'}))}
 function syncOccasion(){const value=$('occasion').value;$('occasionHelp').textContent=value==='auto'?'받는 사람과 선물 고르는 이유가 한 흐름으로 이어지게 써요.':value==='직접'?'적어주신 상황을 글의 출발점으로 사용해요.':sceneFor(value)?.hint||'상품의 쓰임과 선택한 상황을 함께 생각해요.';$('customOccasionWrap').hidden=value!=='직접'}
 function exportText(){return postForMode(current).replaceAll(DISCLOSURE,'').replace(/(^|\n)(https:\/\/gift-link\.kakao\.com\/c\/[^\s]+)/g,'$1카카오톡 선물하기 : $2').replace(/\n{3,}/g,'\n\n').trim()}
-function updateCount(){const count=Array.from(exportText()).length;$('textCount').textContent=`${count}자 · 공백·링크 포함`;$('lengthHelp').textContent=count>500?'기본 게시물 기준인 500자를 넘었어요. 본문을 조금 줄여주세요.':'짧은 게시물용으로 준비했어요.';$('textCount').classList.toggle('over',count>500)}
+function updateCount(){
+ const text=exportText();
+ const count=Array.from(text).length;
+ const body=text.replace(/^카카오톡 선물하기\s*:\s*https?:\/\/\S+\s*$/gm,'').trim().replace(/\r?\n/g,'');
+ const bodyCount=Array.from(body).length;
+ const target=Number(current?.targetLength||$('targetLength').value||100);
+ $('textCount').textContent=`본문 ${bodyCount}자 · 목표 ${target}자 / 링크 포함 ${count}자`;
+ $('lengthHelp').textContent=count>500?'게시 전 본문 길이를 확인해주세요.':Math.abs(bodyCount-target)>target*.1?'선택한 글자 수보다 차이가 있어요. 본문을 직접 다듬을 수 있어요.':'공백 포함 · 줄바꿈과 링크 제외 기준이에요.';
+ $('textCount').classList.toggle('over',count>500);
+}
 const preparedPhotos=new Map();
 function preparePhoto(photo){
  const key=JSON.stringify(photo);if(preparedPhotos.has(key))return preparedPhotos.get(key);
