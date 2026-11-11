@@ -7,6 +7,7 @@ const out=resolve(root,'dist/pages');
 const api='https://gift-note-studio-sdkim.stillterrapin2.chatgpt.site';
 mkdirSync(out,{recursive:true});
 cpSync(resolve(root,'web'),out,{recursive:true});
+cpSync(resolve(root,'server/prompts/threads-writer.md'),resolve(out,'writer-prompt.md'));
 const appPath=resolve(out,'app.js');
 let app=readFileSync(appPath,'utf8');
 app=app.replaceAll("fetch('/api/product?url=",`fetch('${api}/api/product?url=`);
