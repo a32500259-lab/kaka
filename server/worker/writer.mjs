@@ -59,6 +59,7 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  const lengthInstruction=`이번 요청의 최우선 분량은 본문마다 ${minimum}~${maximum}자다. 기준 예시의 문장 길이만 모방해서 100자로 끝내지 않는다. ${targetLength===300?'각 글에 약 90~110자씩 세 문단을 쓴다. 발견과 관심을 가진 상황, 확인된 특징으로 고르는 이유, 같은 취향에서 이어지는 가벼운 마무리로 전개한다.':targetLength===200?'각 글에 약 90~110자씩 두 문단을 쓴다. 첫 문단에서 구체적 상황과 발견, 두 번째에서 그 특징과 이어지는 선택 고민을 말한다.':'짧은 두 문단으로 쓴다.'} 문단 안은 의미 단위 줄바꿈. 2~3개 이모지, 가격 제외, 허위 체험 금지, 자연스러운 말투와 부호 규칙을 모두 유지한다. 반환 전에 본문 길이를 점검해 범위에 맞게 편집한다.`;
  const responseSchema=structuredClone(schema);
  for(const kind of ['recommend','conversation','guide']){
+  if(targetLength>100)responseSchema.properties[kind]={type:'ARRAY',minItems:targetLength/100,maxItems:targetLength/100,items:{type:'STRING',description:'한 문단 90~110자. 공백 포함, 줄바꿈 제외. 같은 이야기의 다음 부분. 문단 안 의미 단위 줄바꿈을 포함한다.'}};
   responseSchema.properties[kind].description=`필수 분량 ${minimum}~${maximum}자. 공백 포함, 줄바꿈 제외. ${lengthInstruction}`;
  }
  const body={systemInstruction:{parts:[{text:runtimePrompt+'\n'+contract+'\n'+lengthInstruction}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestInput(input,evidence))},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema}};
@@ -74,12 +75,15 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  const candidate=result.candidates?.[0];if(!candidate||candidate.finishReason&&candidate.finishReason!=='STOP')throw new WriterError('Gemini가 글을 끝까지 작성하지 못했습니다. 다시 시도해주세요.',502,'AI_INCOMPLETE');
  const raw=candidate.content?.parts?.filter(x=>!x.thought&&typeof x.text==='string').map(x=>x.text).join('')||'';let data;
  try{data=JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g,''))}catch{throw new WriterError('글 응답 형식이 올바르지 않습니다. 다시 시도해주세요.',502,'AI_INVALID_RESPONSE')}
- for(const kind of ['recommend','conversation','guide'])if(typeof data[kind]==='string')data[kind]=cleanModelPost(data[kind]);
+ for(const kind of ['recommend','conversation','guide']){
+  if(Array.isArray(data[kind])&&data[kind].every(part=>typeof part==='string'))data[kind]=data[kind].join('\n\n');
+  if(typeof data[kind]==='string')data[kind]=cleanModelPost(data[kind]);
+ }
  const issues=validatePosts(data);
  if(issues.length)throw new WriterError('생성된 글을 확인한 결과 다시 작성이 필요합니다. '+issues[0],502,'AI_VALIDATION_FAILED');
  const recommendationParagraphs=formatThreadsPost(data.recommend).split(/\n[ \t]*\n/);
  const posts=Object.fromEntries(['recommend','conversation','guide'].map(k=>[k,formatThreadsPost(data[k])]));
- if(recommendationParagraphs.length===3&&recommendationParagraphs.every(paragraph=>!paragraph.includes('\n'))){
+ if(targetLength===100&&recommendationParagraphs.length===3&&recommendationParagraphs.every(paragraph=>!paragraph.includes('\n'))){
   const [opening,...bodyLines]=recommendationParagraphs;
   posts.recommend=opening+'\n\n'+bodyLines.join('\n');
  }
