@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>선물노트 스레드 수집기</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <span class="eyebrow">THREADS CLIPPER</span>
+    <h1>참고 글 모으기</h1>
+    <p>마음에 드는 공개 게시물만 골라 저장해요</p>
+  </header>
+  <main>
+    <button id="scan" class="primary">현재 화면에서 글 찾기</button>
+    <p id="status" role="status">Threads 게시물 화면에서 눌러주세요</p>
+    <section id="results" aria-label="찾은 게시물"></section>
+    <div class="actions">
+      <button id="save" disabled>선택한 글 저장 <span id="selectedCount">0</span></button>
+      <button id="export">저장한 자료 내보내기</button>
+    </div>
+    <section class="saved">
+      <div class="saved-head"><h2>저장한 참고 글</h2><span id="savedCount">0</span></div>
+      <div id="savedList"></div>
+    </section>
+    <p class="privacy">선택한 공개 게시물만 이 Chrome에 저장됩니다. 자동 좋아요·팔로우·댓글은 하지 않아요.</p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

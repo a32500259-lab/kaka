@@ -1,0 +1,11 @@
+{
+  "manifest_version": 3,
+  "name": "선물노트 스레드 수집기",
+  "version": "0.1.0",
+  "description": "직접 고른 스레드 게시물과 화면에 보이는 반응 정보를 로컬에 저장합니다.",
+  "permissions": ["activeTab", "scripting", "storage", "downloads"],
+  "action": {
+    "default_title": "스레드 글 수집",
+    "default_popup": "popup.html"
+  }
+}
