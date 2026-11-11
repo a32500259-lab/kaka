@@ -1,4 +1,10 @@
 (() => {
+  if (document.querySelector('[data-gift-note-collector-manager]')) return;
+  document.querySelectorAll('[data-gift-note-collector]').forEach(el => el.remove());
+  const manager = document.createElement('span');
+  manager.setAttribute('data-gift-note-collector-manager', '');
+  manager.hidden = true;
+  document.documentElement.append(manager);
   if (window.__giftNoteThreadsCollectorInstalled) return;
   window.__giftNoteThreadsCollectorInstalled = true;
 
@@ -65,6 +71,7 @@
   }
 
   function makeControl(card, url) {
+    if (hosts.has(url)) return;
     const host = document.createElement('div');
     host.setAttribute(INSTALLED, '');
     const shadow = host.attachShadow({ mode: 'open' });

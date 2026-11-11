@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "선물노트 스레드 수집기",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "스레드 게시물 옆에서 좋아요·조회수를 보고 직접 고른 글을 로컬에 저장합니다.",
   "permissions": ["activeTab", "scripting", "storage", "downloads"],
   "content_scripts": [{
