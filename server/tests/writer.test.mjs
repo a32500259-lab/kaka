@@ -80,3 +80,10 @@ test('recommendation adds soft breaks at sentence boundaries and preserves blank
  const result=await generateGiftPosts(input,evidence,env,{fetcher:async()=>answer({...good,recommend})});
  assert.equal(result.posts.recommend,recommend.replace('같아. 🦈','같아.\n🦈')+'\n\n카카오톡 선물하기 : '+link);
 });
+
+test('invented visits are rejected without another provider request',async()=>{
+ let calls=0;
+ const recommend='조카 집에 갔을 때 손 씻기 싫다고 도망가는 아이를 잡으러 다녔어. '+good.recommend;
+ await assert.rejects(generateGiftPosts(input,evidence,env,{fetcher:async()=>{calls++;return answer({...good,recommend})}}),e=>e.code==='AI_VALIDATION_FAILED');
+ assert.equal(calls,1);
+});

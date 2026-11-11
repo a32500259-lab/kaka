@@ -2,7 +2,7 @@ export const GEMINI_MODEL='gemini-flash-lite-latest';
 export class WriterError extends Error{constructor(message,status=502,code='AI_FAILED'){super(message);this.status=status;this.code=code}}
 const schema={type:'OBJECT',properties:{recommend:{type:'STRING'},conversation:{type:'STRING'},guide:{type:'STRING'},audience:{type:'STRING'},angle:{type:'STRING'},evidence:{type:'ARRAY',items:{type:'STRING'}},photoNotes:{type:'ARRAY',items:{type:'STRING'}},closingAlternatives:{type:'OBJECT',properties:{recommend:{type:'STRING'},conversation:{type:'STRING'},guide:{type:'STRING'}},required:['recommend','conversation','guide']}},required:['recommend','conversation','guide','audience','angle','evidence','photoNotes','closingAlternatives']};
 const contract=`
-지금은 한국어 Threads 선물 계정의 세 종류 글을 JSON으로 반환하는 작업이다. closingAlternatives에는 각 글의 마지막 문장을 대신할, 같은 고민에서 나온 구체적인 한 문장을 추가한다. 새 기능이나 경험을 보태지 않는다.
+지금은 한국어 Threads 선물 계정의 세 종류 글을 JSON으로 반환하는 작업이다. closingAlternatives에는 각 글의 마지막 문장을 대신할, 같은 고민에서 나온 구체적인 한 문장을 추가한다. 새 기능이나 경험을 보태지 않는다. 사용자가 직접 제공하지 않았다면 과거에 가족이나 친구 집에 방문하거나 아이를 돌본 일을 1인칭으로 쓰지 않는다. 상황은 가정형으로 표현한다. 딱이다, 딱이야 같은 평가로 끝내지 않는다.
 상품 추천 본문은 110~190자, 생활 공감과 고르는 기준은 각각 100~220자. 링크는 이 길이에 포함하지 않는다. 상품 추천 본문은 링크와 별개로 2~3개 문단을 쓰고 사이에 빈 줄 한 칸을 넣는다. 짧은 첫마디를 따로 두거나, 선물 상황과 제품을 발견한 이유 사이에서 나눈다. 이어지는 문장을 문장마다 떼지 않는다. 다른 글 종류는 내용에 따라 문단을 나눈다.
 상품 추천: 이미지와 상품 자료에서 실제 확인한 특징 하나를, 받을 사람의 취향/생활과 연결한다. 상품마다 사람과 상황을 새로 판단한다. 다른 상품에도 그대로 붙일 수 있는 문장은 버린다.
 생활 공감: 선택한 상황과 같은 주제의 일상 대화. 상품명·기능·구매 유도·URL은 넣지 않는다.
@@ -46,7 +46,7 @@ export function validatePosts(data){
   if(Array.from(text).length>(kind==='recommend'?390:460))issues.push(kind+' 글이 너무 깁니다.');
   if(/https?:\/\/|www\.|gift-link|카카오톡 선물하기\s*:/.test(text))issues.push('모델이 링크를 작성했습니다.');
   if(/\d[\d,.]*\s*(?:만\s*)?원|₩|￦|할인|최저가|가성비/.test(text))issues.push('가격이나 할인 표현이 있습니다.');
-  if(/써봤|써보니|써보니까|사봤|구매했|선물했더니|사용해보니|직접 사용|받아봤/.test(text))issues.push('실사용으로 오해할 표현이 있습니다.');
+  if(/써봤|써보니|써보니까|사봤|구매했|선물했더니|사용해보니|직접 사용|받아봤|(?:조카|친구|동생|언니|형|누나|부모님|지인)\s*집에\s*(?:갈 때마다|갔을 때|갔다가)/.test(text))issues.push('실사용으로 오해할 표현이 있습니다.');
  }
  if(!Array.isArray(data?.evidence)||data.evidence.some(x=>typeof x!=='string'))issues.push('상품 근거 형식이 잘못됐습니다.');
  if(typeof data?.audience!=='string'||typeof data?.angle!=='string')issues.push('추천 관점이 없습니다.');
@@ -72,7 +72,7 @@ function requestInput(input,evidence){
  if(options.occasion==='직접'&&!options.customOccasion.trim())throw new WriterError('직접 선택한 상황을 한 줄 적어주세요.',400,'INVALID_INPUT');
  return {options,product:{name:evidence.name,description:evidence.description,detailText:evidence.detailText,productFacts:evidence.productFacts,source:evidence.source},note:'manualNotes는 사용자가 보완한 자료다. 이미지와 충돌하면 단정하지 않는다. 상품 사진은 부분 구간이며 안 보이는 내용을 추정하지 않는다.'};
 }
-export function hasCannedEnding(text){return /(?:돼|줄어들어|있어|있지|라니|생각남|지네|달라져|지거든|재밌어질지도|딱\s*좋아|딱이야|좋겠어)[.!?…~\s\p{Extended_Pictographic}\uFE0F]*$/u.test(String(text).trim())}
+export function hasCannedEnding(text){return /(?:돼|줄어들어|있어|있지|라니|생각남|지네|달라져|지거든|재밌어질지도|딱\s*좋아|딱이야|딱이다|좋겠어)[.!?…~\s\p{Extended_Pictographic}\uFE0F]*$/u.test(String(text).trim())}
 export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  if(!env.GEMINI_API_KEY||env.GEMINI_FREE_TIER_CONFIRMED!=='true')throw new WriterError('Gemini 무료 등급 연결이 필요합니다.',503,'AI_NOT_CONFIGURED');
  const visuals=imageParts(input,evidence);
