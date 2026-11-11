@@ -28,8 +28,10 @@ test('no call without a confirmed free-tier configuration or valid source images
 test('free quota is surfaced immediately with no paid fallback or automatic retry',async()=>{
  let calls=0;await assert.rejects(generateGiftPosts(input,evidence,env,{fetcher:async()=>{calls++;return new Response('{"error":{}}',{status:429})}}),e=>e.code==='FREE_QUOTA_EXCEEDED');assert.equal(calls,1);
 });
-test('temporary overload retries same model at most once',async()=>{
- let calls=0;let delays=0;await assert.rejects(generateGiftPosts(input,evidence,env,{fetcher:async()=>{calls++;return new Response('{}',{status:503})},delay:async()=>{delays++}}),e=>e.code==='AI_BUSY');assert.equal(calls,2);assert.equal(delays,1);
+test('temporary overload does not issue another provider call',async()=>{
+ let calls=0;
+ await assert.rejects(generateGiftPosts(input,evidence,env,{fetcher:async()=>{calls++;return new Response('{}',{status:503})}}),e=>e.code==='AI_BUSY');
+ assert.equal(calls,1);
 });
 test('truncated or invalid model results are never published as completed posts',async()=>{
  await assert.rejects(generateGiftPosts(input,evidence,env,{fetcher:async()=>new Response('{"candidates":[{"finishReason":"MAX_TOKENS"}]}')}),e=>e.code==='AI_INCOMPLETE');
@@ -61,19 +63,16 @@ test('Threads plain-text output retains paragraph gaps when model returns a sing
  assert.equal(formatThreadsPost('첫 줄\n\n제품 포인트\n두 번째 포인트'),'첫 줄\n\n제품 포인트\n두 번째 포인트');
 });
 
-test('canned ending is rewritten once and never silently accepted after another failure',async()=>{
- let calls=0;const bad={...good,recommend:good.recommend+' 좋겠어.'};
- const result=await generateGiftPosts(input,evidence,env,{fetcher:async()=>answer(++calls===1?bad:good)});
- assert.equal(calls,2);assert.ok(!result.posts.recommend.includes('좋겠어.'));
- calls=0;await assert.rejects(generateGiftPosts(input,evidence,env,{fetcher:async()=>{calls++;return answer(bad)}}),e=>e.code==='AI_STYLE_REVIEW');assert.equal(calls,2);
-});
-
-test('a cramped recommendation is rewritten into paragraphs before adding the link',async()=>{
+test('a flat ending uses the alternative from the same provider response',async()=>{
  let calls=0;
- const cramped={...good,recommend:good.recommend.replace('\n\n',' ')};
- const result=await generateGiftPosts(input,evidence,env,{fetcher:async()=>answer(++calls===1?cramped:good)});
- assert.equal(calls,2);
- assert.equal(result.posts.recommend,good.recommend+'\n\n카카오톡 선물하기 : '+link);
+ const last='침대 옆에 두는 선물이라면 친구가 평소 켜두는 밝기부터 물어보려고.';
+ const result=await generateGiftPosts(input,evidence,env,{fetcher:async()=>{
+  calls++;
+  return answer({...good,recommend:good.recommend+' 밝기도 줄어들어.',closingAlternatives:{recommend:last}});
+ }});
+ assert.equal(calls,1);
+ assert.ok(result.posts.recommend.includes(last));
+ assert.ok(!result.posts.recommend.includes('줄어들어.'));
 });
 
 test('recommendation adds soft breaks at sentence boundaries and preserves blank lines',async()=>{

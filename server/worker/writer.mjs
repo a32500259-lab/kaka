@@ -1,8 +1,8 @@
 export const GEMINI_MODEL='gemini-flash-lite-latest';
 export class WriterError extends Error{constructor(message,status=502,code='AI_FAILED'){super(message);this.status=status;this.code=code}}
-const schema={type:'OBJECT',properties:{recommend:{type:'STRING'},conversation:{type:'STRING'},guide:{type:'STRING'},audience:{type:'STRING'},angle:{type:'STRING'},evidence:{type:'ARRAY',items:{type:'STRING'}},photoNotes:{type:'ARRAY',items:{type:'STRING'}}},required:['recommend','conversation','guide','audience','angle','evidence','photoNotes']};
+const schema={type:'OBJECT',properties:{recommend:{type:'STRING'},conversation:{type:'STRING'},guide:{type:'STRING'},audience:{type:'STRING'},angle:{type:'STRING'},evidence:{type:'ARRAY',items:{type:'STRING'}},photoNotes:{type:'ARRAY',items:{type:'STRING'}},closingAlternatives:{type:'OBJECT',properties:{recommend:{type:'STRING'},conversation:{type:'STRING'},guide:{type:'STRING'}},required:['recommend','conversation','guide']}},required:['recommend','conversation','guide','audience','angle','evidence','photoNotes','closingAlternatives']};
 const contract=`
-지금은 한국어 Threads 선물 계정의 세 종류 글을 JSON으로 반환하는 작업이다.
+지금은 한국어 Threads 선물 계정의 세 종류 글을 JSON으로 반환하는 작업이다. closingAlternatives에는 각 글의 마지막 문장을 대신할, 같은 고민에서 나온 구체적인 한 문장을 추가한다. 새 기능이나 경험을 보태지 않는다.
 상품 추천 본문은 110~190자, 생활 공감과 고르는 기준은 각각 100~220자. 링크는 이 길이에 포함하지 않는다. 상품 추천 본문은 링크와 별개로 2~3개 문단을 쓰고 사이에 빈 줄 한 칸을 넣는다. 짧은 첫마디를 따로 두거나, 선물 상황과 제품을 발견한 이유 사이에서 나눈다. 이어지는 문장을 문장마다 떼지 않는다. 다른 글 종류는 내용에 따라 문단을 나눈다.
 상품 추천: 이미지와 상품 자료에서 실제 확인한 특징 하나를, 받을 사람의 취향/생활과 연결한다. 상품마다 사람과 상황을 새로 판단한다. 다른 상품에도 그대로 붙일 수 있는 문장은 버린다.
 생활 공감: 선택한 상황과 같은 주제의 일상 대화. 상품명·기능·구매 유도·URL은 넣지 않는다.
@@ -72,18 +72,15 @@ function requestInput(input,evidence){
  if(options.occasion==='직접'&&!options.customOccasion.trim())throw new WriterError('직접 선택한 상황을 한 줄 적어주세요.',400,'INVALID_INPUT');
  return {options,product:{name:evidence.name,description:evidence.description,detailText:evidence.detailText,productFacts:evidence.productFacts,source:evidence.source},note:'manualNotes는 사용자가 보완한 자료다. 이미지와 충돌하면 단정하지 않는다. 상품 사진은 부분 구간이며 안 보이는 내용을 추정하지 않는다.'};
 }
-export function hasCannedEnding(text){return /(?:달라져|지거든|재밌어질지도|딱\s*좋아|딱이야|좋겠어)[.!?…~\s\p{Extended_Pictographic}\uFE0F]*$/u.test(String(text).trim())}
-export async function generateGiftPosts(input,evidence,env,{fetcher=fetch,delay=ms=>new Promise(resolve=>setTimeout(resolve,ms)),styleAttempt=0}={}){
+export function hasCannedEnding(text){return /(?:돼|줄어들어|있어|있지|라니|생각남|지네|달라져|지거든|재밌어질지도|딱\s*좋아|딱이야|좋겠어)[.!?…~\s\p{Extended_Pictographic}\uFE0F]*$/u.test(String(text).trim())}
+export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  if(!env.GEMINI_API_KEY||env.GEMINI_FREE_TIER_CONFIRMED!=='true')throw new WriterError('Gemini 무료 등급 연결이 필요합니다.',503,'AI_NOT_CONFIGURED');
  const visuals=imageParts(input,evidence);
  if(!visuals.length)throw new WriterError('상품 사진을 준비하지 못했어요. 다시 불러온 뒤 시도해주세요.',400,'NO_IMAGES');
  const runtimePrompt=(env.WRITER_PROMPT||'한국어 Threads 선물 큐레이터 글을 자연스럽게 작성한다.').split('\n').filter(line=>!line.includes('카카오톡 선물하기 :')).join('\n');
- const body={systemInstruction:{parts:[{text:runtimePrompt+'\n'+contract+(styleAttempt?'\n편집 재요청: 직전 초안은 문단, 마무리 또는 경험 표현 검사를 통과하지 못했다. 상품 추천 본문을 2~3문단으로 나누고 사이에 빈 줄 한 칸을 넣는다. 세 줄을 각각 빈 줄로 떼지 말고, 같은 생각을 이어가는 두 줄은 빈 줄 없이 붙인다. 문단 안에서 긴 줄은 문장이나 의미가 끝나는 자리에서 줄바꿈 하나로 나눈다. 제공되지 않은 가족 방문, 구매, 사용 경험을 썼다면 가정이나 관찰로 고친다. recentDrafts는 게시할 글이 아니라 고칠 초안이다. 말끝만 교체하지 말고 마지막 문장의 생각을 앞의 구체적인 선물 고민에 연결해서 새로 쓴다. 좋겠어/딱 좋아/지거든/달라져로 닫지 않는다.':'')}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestInput(input,evidence))},...visuals]}],generationConfig:{temperature:0.85,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema:schema}};
+ const body={systemInstruction:{parts:[{text:runtimePrompt+'\n'+contract}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestInput(input,evidence))},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema:schema}};
  let response;
- for(let attempt=0;attempt<2;attempt++){
   try{response=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify(body),signal:AbortSignal.timeout(65000)})}catch(error){throw new WriterError(error.name==='TimeoutError'?'Gemini 응답이 늦습니다. 잠시 후 다시 시도해주세요.':'Gemini에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',504,'AI_TIMEOUT')}
-  if(response.status!==503||attempt===1)break;await delay(1500);
- }
  let result;try{result=await response.json()}catch{throw new WriterError('Gemini 응답을 읽지 못했습니다.',502,'AI_INVALID_RESPONSE')}
  if(!response.ok){
   if(response.status===429)throw new WriterError('Gemini 무료 사용 한도에 도달했습니다. 시간이 지난 뒤 다시 시도해주세요. 유료 모델로 전환하지 않았습니다.',429,'FREE_QUOTA_EXCEEDED');
@@ -95,14 +92,20 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch,delay=
  const raw=candidate.content?.parts?.filter(x=>!x.thought&&typeof x.text==='string').map(x=>x.text).join('')||'';let data;
  try{data=JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g,''))}catch{throw new WriterError('글 응답 형식이 올바르지 않습니다. 다시 시도해주세요.',502,'AI_INVALID_RESPONSE')}
  for(const kind of ['recommend','conversation','guide'])if(typeof data[kind]==='string')data[kind]=cleanModelPost(data[kind]);
- const issues=validatePosts(data);if(issues.length)throw new WriterError('생성된 글을 확인한 결과 다시 작성이 필요합니다. '+issues[0],502,'AI_VALIDATION_FAILED');
- const recommendationParagraphs=formatThreadsPost(data.recommend).split(/\n[ \t]*\n/);
- const crampedRecommendation=recommendationParagraphs.length<2||recommendationParagraphs.length>3||data.recommend.split(/\r?\n/).some(line=>Array.from(line.trim()).length>90);
- const needsEditing=crampedRecommendation||['recommend','conversation','guide'].some(k=>hasCannedEnding(data[k])||/(?:조카|친구|동생|언니|형|누나|부모님|지인)\s*집에\s*(?:갈 때마다|갔을 때|갔다가)/.test(data[k]));
- if(needsEditing){
-  if(styleAttempt===0)return generateGiftPosts({...input,recentDrafts:[data.conversation,data.guide,data.recommend]},evidence,env,{fetcher,delay,styleAttempt:1});
-  throw new WriterError('문단 간격이나 문체를 다시 다듬어야 해요. 다른 관점으로 다시 써주세요.',502,'AI_STYLE_REVIEW');
+ for(const kind of ['recommend','conversation','guide']){
+  const text=data[kind];
+  if(typeof text!=='string'||!hasCannedEnding(text))continue;
+  const alternate=String(data.closingAlternatives?.[kind]||'').trim();
+  const boundary=[...text.matchAll(/(?:[.!?…][ \t]+|\n+[ \t]*)/g)].at(-1);
+  if(!boundary||!alternate||hasCannedEnding(alternate)||/https?:|\n/.test(alternate)){
+   throw new WriterError('마지막 문장이 글쓰기 지침에 맞지 않아 초안을 보류했어요.',502,'AI_STYLE_REVIEW');
+  }
+  const start=boundary.index+boundary[0].length;
+  data[kind]=text.slice(0,start)+alternate;
  }
+ const issues=validatePosts(data);
+ if(issues.length)throw new WriterError('생성된 글을 확인한 결과 다시 작성이 필요합니다. '+issues[0],502,'AI_VALIDATION_FAILED');
+ const recommendationParagraphs=formatThreadsPost(data.recommend).split(/\n[ \t]*\n/);
  const posts=Object.fromEntries(['recommend','conversation','guide'].map(k=>[k,formatThreadsPost(data[k])]));
  if(recommendationParagraphs.length===3&&recommendationParagraphs.every(paragraph=>!paragraph.includes('\n'))){
   const [opening,...bodyLines]=recommendationParagraphs;
