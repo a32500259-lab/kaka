@@ -48,13 +48,13 @@ function collectVisibleThreads(){
  const visible=el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return r.width>0&&r.height>0&&r.bottom>0&&r.top<innerHeight&&s.visibility!=='hidden'&&s.display!=='none'};
  const anchors=[...document.querySelectorAll('a[href*="/post/"]')].filter(visible);const posts=[];const used=new Set();
  for(const a of anchors){
-  let el=a;for(let n=0;n<8&&el.parentElement;n++){if(el.matches('article,[role="article"]'))break;el=el.parentElement}
+  let el=a;for(let n=0;n<10&&el.parentElement;n++){if(el.matches('article,[role="article"]'))break;el=el.parentElement;const r=el.getBoundingClientRect(),t=(el.innerText||'').trim();if(r.width>260&&r.height>80&&t.length>=20&&t.length<=3000&&el.querySelectorAll('button,[role="button"]').length>=2)break}
   if(!visible(el))continue;
   const url=new URL(a.href,location.href);url.search='';url.hash='';if(!/threads\.com$/.test(url.hostname))continue;
   const key=url.href;if(used.has(key))continue;used.add(key);
   const text=(el.innerText||'').replace(/\n{3,}/g,'\n\n').trim();if(text.length<12||text.length>8000)continue;
-  const buttons=[...el.querySelectorAll('button,[role="button"]')].map(b=>`${b.getAttribute('aria-label')||''} ${b.innerText||''}`.trim());
-  const getCount=pattern=>{for(const line of buttons){if(!pattern.test(line))continue;const m=line.match(/[\d,.]+\s*[만천]?/);if(m)return m[0].replace(/\s/g,'')}return null};
+  const buttons=[...el.querySelectorAll('[aria-label],button,[role="button"]')].map(b=>`${b.getAttribute('aria-label')||''} ${b.getAttribute('title')||''} ${b.innerText||''} ${b.textContent||''}`.trim());
+  const getCount=pattern=>{for(const line of buttons){if(!pattern.test(line))continue;const m=line.match(/[\d,.]+\s*(?:만|천|K|M)?/i);if(m)return m[0].replace(/\s/g,'')}return null};
   const author=(el.querySelector('a[href*="/@"]')?.innerText||'').trim().slice(0,80);
   const date=el.querySelector('time')?.getAttribute('datetime')||el.querySelector('time')?.innerText||'';
   const views=getCount(/조회|view/i);const likes=getCount(/좋아요|like|heart/i);

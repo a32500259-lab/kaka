@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "선물노트 스레드 수집기",
-  "version": "0.2.0",
-  "description": "스레드 게시물 옆 수집 버튼으로 직접 고른 글과 보이는 반응 정보를 로컬에 저장합니다.",
+  "version": "0.3.0",
+  "description": "스레드 게시물 옆에서 좋아요·조회수를 보고 직접 고른 글을 로컬에 저장합니다.",
   "permissions": ["activeTab", "scripting", "storage", "downloads"],
   "content_scripts": [{
     "matches": ["https://www.threads.com/*", "https://threads.com/*"],
