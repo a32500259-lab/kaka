@@ -75,3 +75,11 @@ test('invented visits are rejected without another provider request',async()=>{
  await assert.rejects(generateGiftPosts(input,evidence,env,{fetcher:async()=>{calls++;return answer({...good,recommend})}}),e=>e.code==='AI_VALIDATION_FAILED');
  assert.equal(calls,1);
 });
+
+test('expressive ellipses and exclamation marks survive plain text export',async()=>{
+ const recommend='선물 고르러 왔다가 내 것도 보는 중... 🎀\n\n이렇게 작은 선물에도 취향이 보일까,,, 한번 골라보고 싶다!!!';
+ const result=await generateGiftPosts(input,evidence,env,{fetcher:async()=>answer({...good,recommend})});
+ assert.ok(result.posts.recommend.includes('중...'));
+ assert.ok(result.posts.recommend.includes('보일까,,,'));
+ assert.ok(result.posts.recommend.includes('싶다!!!'));
+});

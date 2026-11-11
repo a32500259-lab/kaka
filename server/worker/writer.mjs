@@ -74,7 +74,7 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  }
  posts.recommend=posts.recommend.replace(/(?<=[.!?…])[ \t]+(?=[가-힣\p{Extended_Pictographic}])/gu,'\n');
  for(const kind of ['recommend','conversation','guide']){
-  posts[kind]=posts[kind].replace(/\.(?=\s|$)/g,'');
+  posts[kind]=posts[kind].replace(/(?<!\.)\.(?!\.)(?=\s|$)/g,'');
  }
  posts.recommend+='\n\n카카오톡 선물하기 : '+evidence.link;
  return {posts,rationale:data.audience+' · '+data.angle,evidence:data.evidence.slice(0,6),photoNotes:Array.isArray(data.photoNotes)?data.photoNotes.slice(0,4):[],provider:'Gemini',model:result.modelVersion||GEMINI_MODEL,generatedAt:new Date().toISOString(),source:evidence.source,checkedAt:evidence.checkedAt,visualSegments:visuals.length/2};
