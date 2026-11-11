@@ -1,6 +1,7 @@
 const $=id=>document.getElementById(id);
 let found=[],saved=[];
 const clean=s=>String(s||'').replace(/\s+/g,' ').trim();
+const postKey=url=>{try{const path=new URL(url).pathname,at=path.indexOf('/post/');return at<0?url:`post:${path.slice(at+6).split('/')[0]}`}catch{return url}};
 function renderFound(){
  const root=$('results');root.replaceChildren();
  found.forEach((post,i)=>{
@@ -35,8 +36,8 @@ $('scan').addEventListener('click',async()=>{
 });
 $('save').addEventListener('click',async()=>{
  const picked=[...document.querySelectorAll('#results input:checked')].map(c=>found[Number(c.dataset.index)]).filter(Boolean);
- const seen=new Set(saved.map(x=>x.url));const now=new Date().toISOString();
- const fresh=picked.filter(p=>p.url&&!seen.has(p.url)).map(p=>({...p,id:crypto.randomUUID(),collectedAt:now}));
+ const seen=new Set(saved.map(x=>postKey(x.url)));const now=new Date().toISOString();
+ const fresh=picked.filter(p=>p.url&&!seen.has(postKey(p.url))).map(p=>({...p,id:crypto.randomUUID(),collectedAt:now}));
  saved=[...fresh,...saved].slice(0,300);await chrome.storage.local.set({giftNoteThreadReferences:saved});renderSaved();$('status').textContent=`${fresh.length}개 글을 이 Chrome에 저장했어요.`;
 });
 $('export').addEventListener('click',async()=>{
@@ -51,7 +52,7 @@ function collectVisibleThreads(){
   let el=a;for(let n=0;n<10&&el.parentElement;n++){if(el.matches('article,[role="article"]'))break;el=el.parentElement;const r=el.getBoundingClientRect(),t=(el.innerText||'').trim();if(r.width>260&&r.height>80&&t.length>=20&&t.length<=3000&&el.querySelectorAll('button,[role="button"]').length>=2)break}
   if(!visible(el))continue;
   const url=new URL(a.href,location.href);url.search='';url.hash='';if(!/threads\.com$/.test(url.hostname))continue;
-  const key=url.href;if(used.has(key))continue;used.add(key);
+  const key=postKey(url.href);if(used.has(key))continue;used.add(key);
   const text=(el.innerText||'').replace(/\n{3,}/g,'\n\n').trim();if(text.length<12||text.length>8000)continue;
   const buttons=[...el.querySelectorAll('[aria-label],button,[role="button"]')].map(b=>`${b.getAttribute('aria-label')||''} ${b.getAttribute('title')||''} ${b.innerText||''} ${b.textContent||''}`.trim());
   const getCount=pattern=>{for(const line of buttons){if(!pattern.test(line))continue;const m=line.match(/[\d,.]+\s*(?:만|천|K|M)?/i);if(m)return m[0].replace(/\s/g,'')}return null};

@@ -16,10 +16,20 @@
     try {
       const url = new URL(anchor.href, location.href);
       if (!/threads\.com$/.test(url.hostname) || !/\/post\//.test(url.pathname)) return '';
+      url.hostname = 'www.threads.com';
       url.search = '';
       url.hash = '';
+      url.pathname = url.pathname.replace(/\/+$/, '');
       return url.href;
     } catch { return ''; }
+  }
+
+  function postKey(url) {
+    try {
+      const path = new URL(url).pathname;
+      const marker = path.indexOf('/post/');
+      return marker < 0 ? url : `post:${path.slice(marker + 6).split('/')[0]}`;
+    } catch { return url; }
   }
 
   function isVisible(el) {
@@ -70,10 +80,14 @@
     };
   }
 
-  function makeControl(card, url) {
-    if (hosts.has(url)) return;
+  function makeControl(card, url, key) {
+    if (hosts.has(key)) return;
+    for (const existing of document.querySelectorAll('[data-gift-note-post-key]')) {
+      if (existing.getAttribute('data-gift-note-post-key') === key) return;
+    }
     const host = document.createElement('div');
     host.setAttribute(INSTALLED, '');
+    host.setAttribute('data-gift-note-post-key', key);
     const shadow = host.attachShadow({ mode: 'open' });
     shadow.innerHTML = `<style>
       :host{all:initial;position:fixed;z-index:2147483646;font-family:system-ui,-apple-system,"Segoe UI",sans-serif}
@@ -113,15 +127,15 @@
       } catch { save.textContent = '저장에 실패했어요'; }
     });
     document.documentElement.append(host);
-    hosts.set(url, { host, card, counts });
+    hosts.set(key, { host, card, counts, url });
   }
 
   function positionControls() {
-    for (const [url, entry] of hosts) {
-      if (!entry.card.isConnected) { entry.host.remove(); hosts.delete(url); continue; }
+    for (const [key, entry] of hosts) {
+      if (!entry.card.isConnected) { entry.host.remove(); hosts.delete(key); continue; }
       if (!isVisible(entry.card)) { entry.host.style.display = 'none'; continue; }
       const rect = entry.card.getBoundingClientRect();
-      const post = readPost(entry.card, url);
+      const post = readPost(entry.card, entry.url);
       if (post) entry.counts.textContent = `조회 ${post.views || '—'} · ♥ ${post.likes || '—'}`;
       entry.host.style.display = 'block';
       entry.host.style.top = `${Math.max(8, Math.min(innerHeight - 42, rect.top + 10))}px`;
@@ -133,9 +147,10 @@
     queued = false;
     for (const anchor of document.querySelectorAll('a[href*="/post/"]')) {
       const url = postUrl(anchor);
-      if (!url || hosts.has(url) || !isVisible(anchor)) continue;
+      const key = postKey(url);
+      if (!url || hosts.has(key) || !isVisible(anchor)) continue;
       const card = findCard(anchor);
-      if (card && !card.querySelector(`[${INSTALLED}]`)) makeControl(card, url);
+      if (card && !card.querySelector(`[${INSTALLED}]`)) makeControl(card, url, key);
     }
     positionControls();
   }
