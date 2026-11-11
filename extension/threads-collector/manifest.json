@@ -1,13 +1,17 @@
 {
   "manifest_version": 3,
   "name": "선물노트 스레드 수집기",
-  "version": "0.5.0",
-  "description": "스레드 게시물 옆에서 좋아요·조회수를 보고 직접 고른 글을 로컬에 저장합니다.",
+  "version": "0.6.0",
+  "description": "Threads 게시물을 직접 수집하고 선물노트 사이트의 수집 목록과 동기화합니다.",
   "permissions": ["activeTab", "scripting", "storage", "downloads"],
   "content_scripts": [{
     "matches": ["https://www.threads.com/*", "https://threads.com/*"],
     "js": ["content.js"],
     "run_at": "document_idle"
+  }, {
+    "matches": ["https://a32500259-lab.github.io/kaka/*"],
+    "js": ["site-bridge.js"],
+    "run_at": "document_start"
   }],
   "action": {
     "default_title": "스레드 글 수집",

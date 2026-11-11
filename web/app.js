@@ -4,9 +4,9 @@ const postForMode=current=>current?.posts?current.posts[current.mode||'recommend
 const $=id=>document.getElementById(id);
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
 const fields=['url','name','category','price','facts','images','age','occasion','audience','angle','photoCount','customOccasion','targetLength'];
-let loadedUrl='',current=null,drafts=[],loadedProduct=null,generating=false,generationController=null;const recentDrafts=[];
+let loadedUrl='',current=null,drafts=[],loadedProduct=null,generating=false,generationController=null;const recentDrafts=[];let collectedThreads=[];
 try{drafts=JSON.parse(localStorage.getItem('gift-note-drafts-v2')||'[]');if(!Array.isArray(drafts))drafts=[]}catch{}
-$('count').textContent=drafts.length;
+$('count').textContent='0';
 function validLink(raw){try{const u=new URL(raw);return u.protocol==='https:'&&u.hostname==='gift-link.kakao.com'&&!u.username&&!u.password&&/^\/c\/[a-zA-Z0-9]+\/?$/.test(u.pathname)}catch{return false}}
 function safeImage(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password}catch{return false}}
 function resize(t){t.style.height='auto';t.style.height=t.scrollHeight+4+'px'}
@@ -112,8 +112,29 @@ $('url').addEventListener('input',()=>{if(inputLink()!==loadedUrl){generationCon
 $('url').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();loadProduct().then(ok=>{if(ok)window.dispatchEvent(new Event('product-loaded'))})}});
 for(const id of fields.filter(id=>id!=='url'&&id!=='photoCount'))$(id).addEventListener('input',()=>{if(current){current.dirty=true;$('copyBtn').disabled=true;$('save').disabled=true;$('status').textContent='입력이 바뀌었어요. 추천 글 만들기를 눌러 반영해주세요.'}});
 $('copyBtn').onclick=async()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}try{await navigator.clipboard.writeText(exportText());$('copyStatus').textContent=current.posts&&current.mode!=='recommend'?'복사 완료! 선택한 글만 스레드에 붙여넣으세요.':'복사 완료! 스레드에 붙여넣고 아래 사진을 따로 첨부해주세요.'}catch{$('copyText').focus();$('copyText').select();$('copyStatus').textContent='글을 선택했어요. Ctrl+C로 복사해주세요.'}};
-$('save').onclick=()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}const draft={...structuredClone(current),fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),date:new Date().toLocaleString('ko-KR')};try{const next=[draft,...drafts].slice(0,30);localStorage.setItem('gift-note-drafts-v2',JSON.stringify(next));drafts=next;$('count').textContent=drafts.length;$('status').textContent='수정한 글과 사진 구성을 이 브라우저에 저장했어요.'}catch{$('status').textContent='저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}};
-$('saved').onclick=()=>{$('history').hidden=false;$('historylist').replaceChildren();if(!drafts.length)$('historylist').textContent='아직 저장한 초안이 없어요.';drafts.forEach(d=>{const b=document.createElement('button');b.textContent=d.title+' · '+d.date;b.onclick=()=>{for(const id of fields)$(id).value=d.fields[id]||(id==='targetLength'?'100':'');loadedUrl=d.link;current=structuredClone(d);render();$('history').hidden=true;$('rationale').scrollIntoView({behavior:'smooth'});$('importStatus').textContent=d.title+' · 저장된 상품 정보';$('status').textContent='저장한 글과 사진을 불러왔어요.'};$('historylist').appendChild(b)});$('history').scrollIntoView({behavior:'smooth'})};$('closeHistory').onclick=()=>{$('history').hidden=true};$('occasion').addEventListener('change',syncOccasion);window.addEventListener('resize',()=>document.querySelectorAll('.posttext').forEach(resize));$('url').value='';clearResult('상품 링크를 넣어 시작해보세요.');
+ $('save').onclick=()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}const draft={...structuredClone(current),fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),date:new Date().toLocaleString('ko-KR')};try{const next=[draft,...drafts].slice(0,30);localStorage.setItem('gift-note-drafts-v2',JSON.stringify(next));drafts=next;$('status').textContent='수정한 글과 사진 구성을 이 브라우저에 저장했어요.'}catch{$('status').textContent='저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}};
+function renderCollectedThreads(){
+ const root=$('historylist');root.replaceChildren();$('count').textContent=String(collectedThreads.length);
+ if(!collectedThreads.length){root.textContent='아직 수집한 글이 없어요. Chrome에서 Threads 글 옆의 수집 버튼을 누르면 여기에 나타납니다.';return}
+ for(const post of collectedThreads){
+  const card=document.createElement('article');card.className='collected-thread';
+  const head=document.createElement('div');head.className='collected-thread-head';
+  const author=document.createElement('strong');author.textContent=post.author||'Threads 게시물';
+  const date=document.createElement('time');date.textContent=post.collectedAt?new Date(post.collectedAt).toLocaleString('ko-KR'):(post.date||'');
+  head.append(author,date);
+  const text=document.createElement('p');text.className='collected-thread-text';text.textContent=post.text||'';
+  const foot=document.createElement('div');foot.className='collected-thread-foot';
+  const metrics=document.createElement('span');metrics.textContent=[post.views!=null?`조회 ${post.views}`:'조회수 미표시',post.likes!=null?`좋아요 ${post.likes}`:'좋아요 미표시'].join(' · ');
+  foot.append(metrics);
+  try{const u=new URL(post.url);if(u.protocol==='https:'&&/(^|\.)threads\.com$/.test(u.hostname)){const link=document.createElement('a');link.href=u.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent='원문 열기 ↗';foot.append(link)}}catch{}
+  card.append(head,text,foot);root.append(card);
+ }
+}
+function requestCollectedThreads(){const requestId=crypto.randomUUID();window.postMessage({source:'gift-note-site',type:'get-references',requestId},location.origin)}
+window.addEventListener('message',event=>{const data=event.data;if(event.source!==window||event.origin!==location.origin||data?.source!=='gift-note-extension'||!['references','references-updated'].includes(data.type)||!Array.isArray(data.items))return;collectedThreads=data.items;renderCollectedThreads();$('collectionStatus').textContent='확장프로그램 수집 내용과 동기화됨';});
+window.addEventListener('gift-note-extension-ready',requestCollectedThreads);
+requestCollectedThreads();
+ $('saved').onclick=()=>{$('history').hidden=false;renderCollectedThreads();requestCollectedThreads();$('history').scrollIntoView({behavior:'smooth'})};$('closeHistory').onclick=()=>{$('history').hidden=true};$('occasion').addEventListener('change',syncOccasion);window.addEventListener('resize',()=>document.querySelectorAll('.posttext').forEach(resize));$('url').value='';clearResult('상품 링크를 넣어 시작해보세요.');
 
 
 document.querySelectorAll('[data-kind]').forEach(button=>button.onclick=()=>{if(!current?.posts)return;current.mode=button.dataset.kind;render()});
