@@ -79,6 +79,19 @@ body{--studio-nav-width:196px;padding-left:var(--studio-nav-width);background:#f
 #dailyEditor h2 label{margin:0}
 #dailyEditor .edit-top{display:block;margin-top:12px;width:100%}
 #dailyPhoneText{white-space:pre-wrap;overflow-wrap:anywhere}
+
+/* Match the desktop Threads composer shown in the reference: 522px of
+   text at 15px, scaled down to fit the preview without changing its wraps. */
+.phone-post{container-type:inline-size}
+.phone-post>p:is(#phoneText,#dailyPhoneText){
+ font-family:system-ui,'Malgun Gothic',sans-serif;
+ font-size:2.8736cqi;
+ line-height:1.4;
+ letter-spacing:normal;
+ word-break:normal;
+ overflow-wrap:break-word;
+ white-space:pre-wrap;
+}
 #history{position:static;inset:auto;margin:20px 18px;box-shadow:none}
 #collectionSearch{max-width:420px}
 .collection-grid-scroll,#referenceLibraryList{overflow:auto}
