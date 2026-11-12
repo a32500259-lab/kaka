@@ -56,7 +56,7 @@ const preparedPhotos=new Map();
 function preparePhoto(photo){
  const key=JSON.stringify(photo);if(preparedPhotos.has(key))return preparedPhotos.get(key);
  const job=(async()=>{
-  const source=new URL(photo.src,location.href);const imageUrl=source.hostname==='st.kakaocdn.net'?apiUrl('/api/image?url='+encodeURIComponent(photo.src)):photo.src;const img=new Image();if(new URL(imageUrl,location.href).origin!==location.origin)img.crossOrigin='anonymous';
+  const imageUrl=apiUrl('/api/image?url='+encodeURIComponent(photo.src));const img=new Image();if(new URL(imageUrl,location.href).origin!==location.origin)img.crossOrigin='anonymous';
   await new Promise((resolve,reject)=>{const timer=setTimeout(()=>reject(new Error('timeout')),15000);img.onload=()=>{clearTimeout(timer);resolve()};img.onerror=()=>{clearTimeout(timer);reject(new Error('image'))};img.src=imageUrl});
   const width=1600,sourceHeight=photo.h||img.naturalHeight,contentHeight=Math.round(sourceHeight*width/img.naturalWidth);
   const canvas=document.createElement('canvas'),padding=28;canvas.width=width;const ctx=canvas.getContext('2d');ctx.font='24px "Malgun Gothic", sans-serif';const fontSize=Math.min(24,24*(width-padding*2)/ctx.measureText(DISCLOSURE).width);const footerHeight=Math.ceil(fontSize+padding*2);
