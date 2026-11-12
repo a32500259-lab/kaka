@@ -1,4 +1,4 @@
-import {variedPosts,variedCopy,describePlan,sceneFor,scenes,productLens} from './variation.js?v=781c73e1f5559183';
+import {variedPosts,variedCopy,describePlan,sceneFor,scenes,productLens} from './variation.js?v=f5818ae13d5ce5aa';
 export {describePlan,sceneFor,scenes,productLens};
 // Product facts select the subject; gift occasions only change the angle.
 // Never turn title keywords into claims about personal use or performance.

@@ -40,12 +40,12 @@ test('daily editor sends its own story, length and collected reference to Gemini
   const output=await generateDailyPost({source,referenceThreads,targetLength},env,{
    fetcher:async(_url,options)=>{
     sent=JSON.parse(options.body);
-    return answer({text:'퇴근길에 비 오는데 우산 빌려준 동료 생각이 나더라'});
+    return answer({hook:'퇴근길에 비가 오더라',scene:['동료가 우산을 빌려줬어','그 장면이 계속 생각났어'],empathy:'작은 배려가 오래 남더라'});
    }
   });
   assert.deepEqual(JSON.parse(sent.contents[0].parts[0].text),{source,referenceThreads:referenceThreads.map(item=>item.text),targetLength});
   assert.equal(sent.contents[0].parts.length,1);
-  assert.match(output.text,/우산/);
+  assert.equal(output.text,'퇴근길에 비가 오더라\n동료가 우산을 빌려줬어\n그 장면이 계속 생각났어\n\n작은 배려가 오래 남더라');
  }
 });
 test('no call without a confirmed free-tier configuration or valid source images',async()=>{
