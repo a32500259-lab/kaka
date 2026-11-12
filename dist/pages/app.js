@@ -1,6 +1,6 @@
-import {sceneFor} from './scene-options.js?v=f5818ae13d5ce5aa';
-import {requestDailyPost} from './ai-client.js?v=f5818ae13d5ce5aa';
-import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=f5818ae13d5ce5aa';
+import {sceneFor} from './scene-options.js?v=be329fb7e1887c3b';
+import {requestDailyPost} from './ai-client.js?v=be329fb7e1887c3b';
+import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=be329fb7e1887c3b';
 const postForMode=current=>current?.posts?current.posts[current.mode||'recommend']||'':current?.postText??[...(current?.sections||[]),current?.link].filter(Boolean).join('\n\n');
 const $=id=>document.getElementById(id);
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
