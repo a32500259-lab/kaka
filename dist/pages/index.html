@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#faf9ff">
   <title>선물노트 · 스레드 스튜디오</title>
-  <link href="style.css?v=b335088aa9282359" rel="stylesheet">
+  <link href="style.css?v=87e78161f4b0db8f" rel="stylesheet">
   <script>
     (() => {
-      const current = 'b335088aa9282359';
+      const current = '87e78161f4b0db8f';
       const version = new URL('release.json', location.href);
       version.searchParams.set('check', Date.now());
       fetch(version, { cache: 'no-store', signal: AbortSignal.timeout(5000) })
@@ -38,6 +38,11 @@
   </header>
 
   <main id="workspace">
+    <nav class="studio-nav" aria-label="스튜디오 목차">
+      <button type="button" data-studio="workbench" aria-current="page">♧　스레드 스튜디오</button>
+      <button type="button" data-studio="daily">✎　일상글 스튜디오</button>
+      <button type="button" data-studio="history">▤　스레드 수집글</button>
+    </nav>
     <section class="workbench" id="workbench" aria-label="스레드 콘텐츠 편집기">
       <aside class="benchmark-panel">
         <div class="benchmark-heading"><div><h2>벤치마킹 원문 <span class="info-mark" title="선택한 수집 글은 말투와 문단 흐름을 참고합니다">i</span></h2><p>내 글의 참고가 되는 원문이에요.</p></div><button class="icon-button" id="openReferencePickerSide" type="button" aria-label="수집 글 불러오기">···</button></div>
@@ -45,10 +50,10 @@
         <button class="outline-button benchmark-load" id="openReferencePickerBottom" type="button">⊖ 참고 불러오기</button>
       </aside>
 
-      <section class="editor-column">
+      <section class="editor-column" id="productEditor">
         <section class="direction-card" aria-labelledby="directionTitle">
           <div class="section-heading"><div><h2 id="directionTitle">이번 글의 방향</h2><p>어떤 관점으로 글을 작성할지 선택해 주세요.</p></div></div>
-          <div class="mode-switch" aria-label="글 종류" role="group"><button aria-pressed="true" data-kind="recommend" type="button">♧　상품 추천</button><button aria-pressed="false" data-kind="conversation" type="button">☺　생활 공감</button></div>
+          <p class="product-mode-label">♧　상품 추천</p>
           <div class="two setting-row"><div><label for="occasion">작성 상황(예시)</label><select id="occasion"><option value="auto">상품에 맞게, 매번 새롭게</option></select><p class="help" id="occasionHelp">선물 받을 사람과 고르는 이유를 자연스럽게 이어요.</p></div><div><label for="targetLength">글 길이</label><select id="targetLength" aria-describedby="targetLengthHelp"><option value="100">짧게 · 약 100자</option><option value="200">중간 · 약 200자</option><option value="300">길게 · 약 300자</option></select><p class="help" id="targetLengthHelp">공백 포함 · 링크 제외 · 선택한 길이 ±10% 내외</p></div></div>
           <div hidden id="customOccasionWrap"><label for="customOccasion">어떤 상황인가요?</label><input id="customOccasion" maxlength="140" placeholder="예: 첫 출근을 앞둔 동생에게"></div><input id="age" type="hidden" value="auto"><input id="audience" type="hidden"><input id="angle" type="hidden"><select id="photoCount" hidden aria-hidden="true"><option value="0">0장</option></select>
         </section>
@@ -66,11 +71,27 @@
         </section>
       </section>
 
-      <aside class="phone-column"><div class="phone-shell"><div class="phone-island"></div><div class="phone-top"><span>‹</span><b>Threads</b><span>···</span></div><div class="phone-post"><div class="phone-author"><span class="avatar">선</span><div><b>howabout.pick</b><small>지금</small></div><span>···</span></div><p id="phoneText">상품을 불러오고 글을 만들면<br>Threads 미리보기가 여기에 보여요.</p><div id="phonePhotos" class="phone-photos"></div><a id="phoneLink" hidden></a><div class="phone-reactions"><span>♡ <i id="previewLikes">—</i></span><span>◯</span><span>⟳</span><span>♧</span></div></div><div class="phone-home"></div></div><p class="phone-caption">Threads 게시물 미리보기</p></aside>
+      <section class="editor-column" id="dailyEditor" hidden aria-label="일상글 스튜디오">
+        <section class="direction-card">
+          <div class="section-heading"><div><h2>일상글 스튜디오</h2><p>내 이야기에 벤치마킹 원문의 말투와 호흡을 입혀요.</p></div></div>
+          <label for="dailySource">내 일상글·공감글</label>
+          <textarea id="dailySource" rows="6" maxlength="4000" placeholder="오늘 있었던 일이나 공감하고 싶은 이야기를 적어주세요."></textarea>
+          <label for="dailyLength">글 길이</label>
+          <select id="dailyLength"><option value="100">100자</option><option value="200">200자</option><option value="300">300자</option></select>
+          <button type="button" class="edit-top" id="dailyGenerate">Gemini로 글 만들기</button>
+          <p id="dailyStatus" role="status" class="status-line"></p>
+        </section>
+        <section class="writing-card">
+          <div class="writing-heading"><h2><label for="dailyOutput">완성된 글</label></h2><span id="dailyCount" class="char-count"></span></div>
+          <textarea id="dailyOutput" rows="7" placeholder="생성된 글을 여기에서 수정할 수 있어요."></textarea>
+          <div class="editor-actions"><button type="button" id="dailyCopy" disabled>글 복사</button><button type="button" id="dailySave" class="save-button" disabled>글 저장</button></div>
+        </section>
+      </section>
+      <aside class="phone-column"><div class="phone-shell"><div class="phone-island"></div><div class="phone-top"><span>‹</span><b>Threads</b><span>···</span></div><div class="phone-post"><div class="phone-author"><span class="avatar">선</span><div><b>howabout.pick</b><small>지금</small></div><span>···</span></div><p id="phoneText">상품을 불러오고 글을 만들면<br>Threads 미리보기가 여기에 보여요.</p><p id="dailyPhoneText" hidden>일상글을 만들면 여기에 보여요.</p><div id="phonePhotos" class="phone-photos"></div><a id="phoneLink" hidden></a><div class="phone-reactions"><span>♡ <i id="previewLikes">—</i></span><span>◯</span><span>⟳</span><span>♧</span></div></div><div class="phone-home"></div></div><p class="phone-caption">Threads 게시물 미리보기</p></aside>
     </section>
 
-    <section hidden id="history"><div class="section-title"><div><h2>수집한 스레드</h2><p class="help">Chrome 확장프로그램에서 모은 게시물이 여기에 표시됩니다.</p></div><button id="closeHistory" type="button">닫기</button></div><p class="collection-status" id="collectionStatus" role="status">Chrome 확장프로그램과 연결하는 중…</p><div id="historylist" aria-live="polite"></div></section>
-    <section hidden id="rulesPanel"><div class="stage-heading"><span>◇</span><div><h2>우리 계정의 글쓰기 지침</h2><p>2030 선물 큐레이터 · 자연스러운 대화체</p></div></div><p>모든 글은 첫 세 줄을 후킹 → 설명 → 공감 순으로 씁니다.</p><ul><li>구체적인 발견으로 시작하고, 상품 특징과 선물 고민을 이어갑니다.</li><li>문장 단위 줄바꿈, 주제가 전환되면 한 줄을 띄웁니다.</li><li>가격이나 확인되지 않은 사용 후기는 넣지 않습니다.</li><li>큐레이터 수수료 안내는 저장 사진 하단에 한 줄로 표시합니다.</li></ul><a href="writer-prompt.md?v=b335088aa9282359" download>Gemini에 전달하는 글쓰기 지침 ↗</a><p><button id="closeRules" type="button">작업실로 돌아가기</button></p></section>
+    <section hidden id="history"><div class="section-title"><div><h2>스레드 수집글</h2><p class="help">Chrome 확장프로그램에서 모은 게시물이 여기에 표시됩니다.</p></div><button id="closeHistory" type="button">닫기</button></div><p class="collection-status" id="collectionStatus" role="status">Chrome 확장프로그램과 연결하는 중…</p><input id="collectionSearch" type="search" aria-label="수집글 검색" placeholder="수집글 검색"><div class="collection-grid-scroll"><div id="historylist" aria-live="polite"></div></div></section>
+    <section hidden id="rulesPanel"><div class="stage-heading"><span>◇</span><div><h2>우리 계정의 글쓰기 지침</h2><p>2030 선물 큐레이터 · 자연스러운 대화체</p></div></div><p>모든 글은 첫 세 줄을 후킹 → 설명 → 공감 순으로 씁니다.</p><ul><li>구체적인 발견으로 시작하고, 상품 특징과 선물 고민을 이어갑니다.</li><li>문장 단위 줄바꿈, 주제가 전환되면 한 줄을 띄웁니다.</li><li>가격이나 확인되지 않은 사용 후기는 넣지 않습니다.</li><li>큐레이터 수수료 안내는 저장 사진 하단에 한 줄로 표시합니다.</li></ul><a href="writer-prompt.md?v=87e78161f4b0db8f" download>Gemini에 전달하는 글쓰기 지침 ↗</a><p><button id="closeRules" type="button">작업실로 돌아가기</button></p></section>
     <footer><span>선물노트 · Threads Studio</span><span>수집한 스레드와 초안은 이 브라우저에 저장됩니다.</span></footer>
   </main>
 
@@ -79,7 +100,7 @@
   <dialog id="referencePickerDialog" class="picker-dialog"><section><div class="dialog-heading"><div><h2>수집한 스레드 불러오기</h2><p class="help">선택한 글의 말투와 문단 흐름을 새 글에 참고해요.</p></div><button id="closeReferencePicker" type="button">닫기</button></div><p id="referencePickerStatus" class="help" role="status"></p><div id="referenceLibraryList" class="reference-library-list"></div><div class="dialog-actions"><button id="clearReferenceSelection" type="button">선택 해제</button><button id="applyReferenceSelection" type="button" class="primary">선택한 글 불러오기</button></div></section></dialog>
   <dialog id="aiConnectionDialog"><form id="aiConnectionForm"><div class="dialog-heading"><div><h2>내 작업실 연결</h2><p class="help">Gemini 무료 연결을 확인해요.</p></div></div><label for="writerConnectionCode">작업실 연결 코드</label><input id="writerConnectionCode" type="password" autocomplete="off" required><label class="remember-connection"><input id="rememberWriterConnection" type="checkbox"> 이 브라우저에 연결 유지</label><p class="help">API 키는 서버 비밀 설정에서만 사용합니다.</p><p id="aiConnectionMessage" role="status"></p><div class="dialog-actions"><button id="aiConnectionClose" type="button">닫기</button><button type="submit" class="primary">연결 확인</button></div></form></dialog>
 
-  <script src="app.js?v=b335088aa9282359" type="module"></script>
-  <script src="workflow.js?v=b335088aa9282359" type="module"></script>
+  <script src="app.js?v=87e78161f4b0db8f" type="module"></script>
+  <script src="workflow.js?v=87e78161f4b0db8f" type="module"></script>
 </body>
 </html>

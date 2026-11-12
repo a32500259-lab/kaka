@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {generateGiftPosts,validatePosts,GEMINI_MODEL,formatThreadsPost} from '../worker/writer.mjs';
+import {generateDailyPost,generateGiftPosts,validatePosts,GEMINI_MODEL,formatThreadsPost} from '../worker/writer.mjs';
 import handler from '../worker/handler.mjs';
 const photo='https://st.kakaocdn.net/product/gift/product/test.jpg';
 const link='https://gift-link.kakao.com/c/testCase?keep=original';
@@ -22,14 +22,31 @@ test('real provider request carries prompt, visuals and selected audience; only 
  assert.match(result.posts.conversation,/집들이 선물을 같이 고르는 건 성의 없는 게 아니라 실패를 줄이는 방법 같아/);assert.equal(result.model,'gemini-test-version');assert.equal(result.visualSegments,1);
 });
 test('selected collected Threads posts reach Gemini as style references',async()=>{
- const referenceThreads=[{text:'요즘 선물 고르는 게 생각보다 어렵더라\n받는 사람 취향부터 떠올리게 돼 🎁'}];let seen;
+ const referenceThreads=[{text:'요즘 선물 고르는 게 생각보다 어렵더라!!!\n받는 사람 취향부터 떠올리게 돼 🎁'}];let seen;
  const responseData={...good,referenceStyle:'발견에서 선물 고민으로 이어지는 흐름',referenceProof:'집들이 선물로 조명을 고르면 방에 놓을 자리부터 떠올리게 돼'};
  const result=await generateGiftPosts({...input,referenceThreads,recentDrafts:['예전 초안']},evidence,env,{fetcher:async(url,options)=>{seen=JSON.parse(options.body);return answer(responseData)}});
  const requestInput=JSON.parse(seen.contents[0].parts[0].text);
  assert.deepEqual(requestInput.options.referenceThreads,referenceThreads.map(item=>item.text));
  assert.deepEqual(requestInput.options.recentDrafts,[]);
  assert.match(seen.systemInstruction.parts[0].text,/referenceThreads/);
- assert.ok(result.referenceStyle.includes('발견에서 선물 고민으로 이어지는 흐름'));
+ assert.match(result.posts.recommend,/!!!/);
+ assert.match(result.referenceStyle,/!!!/);
+});
+test('daily editor sends its own story, length and collected reference to Gemini without product photos',async()=>{
+ const source='비 오는 날 퇴근길에 동료가 우산을 빌려줬어.';
+ const referenceThreads=[{text:'오늘 말이야…\n\n별일 아닌데 계속 생각나더라'}];
+ for(const targetLength of [100,200,300]){
+  let sent;
+  const output=await generateDailyPost({source,referenceThreads,targetLength},env,{
+   fetcher:async(_url,options)=>{
+    sent=JSON.parse(options.body);
+    return answer({text:'퇴근길에 비 오는데 우산 빌려준 동료 생각이 나더라'});
+   }
+  });
+  assert.deepEqual(JSON.parse(sent.contents[0].parts[0].text),{source,referenceThreads:referenceThreads.map(item=>item.text),targetLength});
+  assert.equal(sent.contents[0].parts.length,1);
+  assert.match(output.text,/우산/);
+ }
 });
 test('no call without a confirmed free-tier configuration or valid source images',async()=>{
  let calls=0;const options={fetcher:async()=>{calls++;return answer(good)}};

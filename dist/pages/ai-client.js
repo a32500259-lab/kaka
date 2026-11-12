@@ -34,10 +34,19 @@ export async function prepareVisuals(product,signal,onProgress=()=>{}){
  if(visuals.length!==sources.length)throw new Error('상품 메인 사진을 모두 확인하지 못해 초안을 만들지 않았어요. 사진을 다시 불러온 뒤 시도해주세요.');
  return {visuals:visuals.slice(0,6),failures};
 }
-export async function requestGiftPosts(input,signal){
+async function requestGeneration(input,signal){
  const response=await fetch(apiUrl('/api/generate'),{method:'POST',headers:{'Content-Type':'application/json',...(accessToken?{Authorization:'Bearer '+accessToken}:{})},body:JSON.stringify(input),signal});
  let data;try{data=await response.json()}catch{throw new Error('AI 서버의 응답을 읽지 못했습니다.')}
  if(!response.ok){const error=new Error(data.error||'AI 글 생성에 실패했습니다.');error.code=data.code;throw error}
+ return data;
+}
+export async function requestGiftPosts(input,signal){
+ const data=await requestGeneration(input,signal);
  if(!data.posts||!['recommend','conversation','guide'].every(k=>typeof data.posts[k]==='string'))throw new Error('AI 글 결과가 올바르지 않습니다.');
  return data;
+}
+export async function requestDailyPost(input,signal){
+ const data=await requestGeneration({...input,mode:'daily'},signal);
+ if(typeof data.text!=='string'||!data.text.trim())throw new Error('일상글 결과를 읽지 못했어요.');
+ return data.text;
 }

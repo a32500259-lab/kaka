@@ -1,5 +1,6 @@
-import {sceneFor} from './scene-options.js?v=b335088aa9282359';
-import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=b335088aa9282359';
+import {sceneFor} from './scene-options.js?v=87e78161f4b0db8f';
+import {requestDailyPost} from './ai-client.js?v=87e78161f4b0db8f';
+import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=87e78161f4b0db8f';
 const postForMode=current=>current?.posts?current.posts[current.mode||'recommend']||'':current?.postText??[...(current?.sections||[]),current?.link].filter(Boolean).join('\n\n');
 const $=id=>document.getElementById(id);
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
@@ -122,7 +123,7 @@ async function generate(){
   if(!status.connected){showConnection();throw new Error('먼저 작업실 연결 코드를 입력해주세요. API 키는 서버에서만 사용합니다.')}
   const chosen=[...selectedPhotoSources];const mainPhotos=chosen.length?chosen:photoCandidates.map(photo=>photo.src).slice(0,3);if(!mainPhotos.length)throw new Error('상품 메인 사진이 없어 초안을 만들지 않았어요. 사진이 있는 상품을 불러와주세요.');const visualProduct={...loadedProduct,images:mainPhotos,detailImages:[]};const {visuals}=await prepareVisuals(visualProduct,controller.signal,message=>{$('status').textContent=message});
   $('status').textContent='Gemini가 상품 사진과 설명을 읽고, 글의 흐름을 다듬고 있어요…';
-  const referenceThreads=collectedThreads.filter(post=>selectedReferenceIds.has(post.id)&&typeof post.id==='string'&&String(post.text||'').trim()).slice(0,3).map(post=>({text:String(post.text).slice(0,1600)}));
+  const referenceThreads=referencePayload();
   $('generationContext').textContent=`후킹 → 설명 → 공감 · 참고 글 ${referenceThreads.length}개 반영 · 가격 제외`;
   const result=await requestGiftPosts({...input,link,visuals,recentDrafts,referenceThreads},controller.signal);
   if(controller.signal.aborted||serial!==requestNumber||inputLink()!==link)return;
@@ -152,7 +153,10 @@ function renderCollectedThreads(){
  const root=$('historylist');root.replaceChildren();$('count').textContent=String(collectedThreads.length);
  renderReferenceSelection();renderReferenceLibrary();
  if(!collectedThreads.length){root.textContent='아직 수집한 글이 없어요. Chrome에서 Threads 글 옆의 수집 버튼을 누르면 여기에 나타납니다.';return}
- for(const post of collectedThreads){
+ const query=$('collectionSearch').value.trim().toLocaleLowerCase();
+ const matches=collectedThreads.filter(post=>[post.author,post.text].some(value=>String(value||'').toLocaleLowerCase().includes(query)));
+ if(!matches.length){root.textContent='검색에 맞는 수집글이 없어요.';return}
+ for(const post of matches){
   const card=document.createElement('article');card.className='collected-thread';
   const head=document.createElement('div');head.className='collected-thread-head';
   const author=document.createElement('strong');author.textContent=post.author||'Threads 게시물';
@@ -165,13 +169,64 @@ function renderCollectedThreads(){
   const remove=document.createElement('button');remove.type='button';remove.className='delete-collected-thread';remove.textContent='삭제';remove.disabled=!post.id;
   remove.title=post.id?'이 수집 글을 삭제합니다':'확장프로그램을 새로고침해 다시 수집하면 삭제할 수 있습니다';
   remove.addEventListener('click',()=>{if(post.id)deleteCollectedThread(post.id)});
-  actions.append(remove);
+  const use=document.createElement('button');
+  use.type='button';use.textContent='참고로 사용';use.disabled=!post.id;
+  use.addEventListener('click',()=>{
+   if(!selectedReferenceIds.has(post.id)&&selectedReferenceIds.size>=3){$('collectionStatus').textContent='참고 글은 최대 3개까지 선택할 수 있어요. 기존 참고 글을 먼저 해제해주세요.';return}
+   selectedReferenceIds.add(post.id);renderReferenceSelection();renderReferenceLibrary();
+   window.dispatchEvent(new Event('collection-reference-picked'));
+  });
+  actions.append(use,remove);
   foot.append(metrics,actions);
   try{const u=new URL(post.url);if(u.protocol==='https:'&&/(^|\.)threads\.com$/.test(u.hostname)){const link=document.createElement('a');link.href=u.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent='원문 열기 ↗';foot.append(link)}}catch{}
   card.append(head,text,foot);root.append(card);
  }
 }
 function selectedReferencePosts(){return collectedThreads.filter(post=>post.id&&selectedReferenceIds.has(post.id)).slice(0,3)}
+function referencePayload(){
+ return selectedReferencePosts().filter(post=>typeof post.id==='string'&&String(post.text||'').trim()).map(post=>({text:String(post.text).slice(0,1600)}));
+}
+$('collectionSearch').addEventListener('input',renderCollectedThreads);
+
+const dailySource=$('dailySource'),dailyOutput=$('dailyOutput'),dailyLength=$('dailyLength'),dailyStatus=$('dailyStatus');
+function updateDailyPreview(){
+ const output=dailyOutput.value;
+ $('dailyPhoneText').textContent=output||'일상글을 만들면 여기에 보여요.';
+ $('dailyCount').textContent=output?Array.from(output.replace(/\r?\n/g,'')).length+'자':'';
+ $('dailyCopy').disabled=$('dailySave').disabled=!output.trim();
+}
+try{
+ const draft=JSON.parse(localStorage.getItem('gift-note-daily-draft')||'null');
+ if(draft){dailySource.value=draft.source||'';dailyOutput.value=draft.output||'';dailyLength.value=draft.length||'100'}
+}catch{}
+updateDailyPreview();
+dailyOutput.addEventListener('input',updateDailyPreview);
+$('dailyGenerate').addEventListener('click',async()=>{
+ const source=dailySource.value.trim();
+ if(!source){dailyStatus.textContent='먼저 내 일상글이나 공감글을 적어주세요.';dailySource.focus();return}
+ const button=$('dailyGenerate');
+ const referenceThreads=referencePayload();
+ button.disabled=dailySource.readOnly=dailyOutput.readOnly=dailyLength.disabled=true;
+ dailyStatus.textContent='Gemini가 일상글을 쓰고 있어요.';
+ try{
+  dailyOutput.value=await requestDailyPost({source,targetLength:Number(dailyLength.value),referenceThreads},AbortSignal.timeout(75000));
+  updateDailyPreview();
+  dailyStatus.textContent=referenceThreads.length?'선택한 벤치마킹 원문을 참고해 작성했어요.':'입력한 내용을 바탕으로 작성했어요.';
+ }catch(error){
+  dailyStatus.textContent=error.message;
+  if(error.code==='AUTH_REQUIRED')showConnection();
+ }finally{button.disabled=dailySource.readOnly=dailyOutput.readOnly=dailyLength.disabled=false}
+});
+$('dailyCopy').addEventListener('click',async()=>{
+ try{await navigator.clipboard.writeText(dailyOutput.value);dailyStatus.textContent='글을 복사했어요.'}
+ catch{dailyOutput.focus();dailyOutput.select();dailyStatus.textContent='선택된 글을 Ctrl+C로 복사해주세요.'}
+});
+$('dailySave').addEventListener('click',()=>{
+ try{
+  localStorage.setItem('gift-note-daily-draft',JSON.stringify({source:dailySource.value,output:dailyOutput.value,length:dailyLength.value}));
+  dailyStatus.textContent='이 브라우저에 일상글을 저장했어요.';
+ }catch{dailyStatus.textContent='저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}
+});
 function syncGenerationContext(){const count=selectedReferencePosts().filter(post=>typeof post.text==='string'&&post.text.trim()).length;$('generationContext').textContent=`${loadedProduct?'상품 준비됨':'상품 링크를 먼저 불러와 주세요'} · 참고 글 ${count}개${count?' 생성에 반영':' 선택됨'} · 후킹 → 설명 → 공감`}
 function renderReferenceSelection(){
  const root=$('selectedReferences');if(!root)return;root.replaceChildren();

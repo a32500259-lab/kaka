@@ -1,4 +1,4 @@
-import {generateGiftPosts,writerStatus,WriterError} from './writer.mjs';
+import {generateDailyPost,generateGiftPosts,writerStatus,WriterError} from './writer.mjs';
 const SAMPLE_IMAGE='https://st.kakaocdn.net/product/gift/editor/20261029145607_a767704706514ec38cc0a2dedcf91b40.jpg';
 const pages=new Set(['gift-link.kakao.com','gift.kakao.com']);
 export function allowed(raw,kind){try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password&&!u.port&&(kind==='image'?u.hostname==='st.kakaocdn.net'&&u.pathname.startsWith('/product/gift/'):kind==='data'?u.hostname==='gift.kakao.com'&&/^\/a\/product-detail\/v3\/products\/\d+$/.test(u.pathname):pages.has(u.hostname)&&(u.hostname==='gift-link.kakao.com'?/^\/c\/[a-zA-Z0-9]+\/?$/.test(u.pathname):/^\/product\/\d+$/.test(u.pathname)))}catch{return false}}
@@ -34,6 +34,8 @@ export default {async fetch(request,env={}){const u=new URL(request.url);try{
   if(!env.GEMINI_API_KEY||env.GEMINI_FREE_TIER_CONFIRMED!=='true')return withCors(json({error:'Gemini 무료 등급 연결을 먼저 확인해야 합니다.',code:'AI_NOT_CONFIGURED'},503),request);
   if(!env.GIFT_WRITER_TOKEN||request.headers.get('Authorization')!=='Bearer '+env.GIFT_WRITER_TOKEN)return withCors(json({error:'작업실 연결 코드를 확인해주세요.',code:'AUTH_REQUIRED'},401),request);
   const raw=await request.text();if(raw.length>9000000)throw new WriterError('사진 데이터가 너무 큽니다. 다시 불러와주세요.',413,'INPUT_TOO_LARGE');let input;try{input=JSON.parse(raw)}catch{throw new WriterError('요청 내용을 읽지 못했어요.',400,'INVALID_INPUT')}
+  if(!input||typeof input!=='object')throw new WriterError('요청 내용을 확인해주세요.',400,'INVALID_INPUT');
+  if(input.mode==='daily')return withCors(json(await generateDailyPost(input,env)),request);
   if(typeof input.link!=='string'||!allowed(input.link,'page'))throw new WriterError('상품 링크를 확인해주세요.',400,'INVALID_LINK');
   const evidence=await product(input.link);return withCors(json(await generateGiftPosts(input,evidence,{...env,WRITER_PROMPT:typeof WRITER_PROMPT==='string'?WRITER_PROMPT:env.WRITER_PROMPT})),request);
  }

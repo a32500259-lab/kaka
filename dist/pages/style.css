@@ -68,3 +68,34 @@
 .inline-photo-save{display:block;width:100%;padding:6px 7px;border-color:#d9caff;color:#5a3bc1;font-size:10px}
 @media(max-width:700px){.inline-photo-check img{height:140px}.inline-photo-disclosure{font-size:7px}.inline-photo-save{font-size:9px;padding:5px}}
 .phone-photos img{height:auto;max-height:400px;object-fit:contain;background:#f4f1f8}
+
+body{--studio-nav-width:196px;padding-left:var(--studio-nav-width);background:#faf9fd}
+.studio-nav{position:fixed;inset:0 auto 0 0;z-index:31;width:var(--studio-nav-width);padding:28px 12px;background:#fff;border-right:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.studio-nav button{border:0;text-align:left;padding:12px 10px;font-size:13px;font-weight:700;white-space:nowrap}
+.studio-nav button[aria-current="page"]{background:#eee7ff;color:#5531bb}
+.workbench{width:calc(100% - 36px);grid-template-columns:minmax(195px,.9fr) minmax(320px,2fr) minmax(240px,1.08fr);gap:14px}
+.product-mode-label{margin:16px 10px 0;color:#5335b1;font-weight:700}
+#dailyEditor label{display:block;margin:10px 0 6px;font-weight:700}
+#dailyEditor h2 label{margin:0}
+#dailyEditor .edit-top{display:block;margin-top:12px;width:100%}
+#dailyPhoneText{white-space:pre-wrap;overflow-wrap:anywhere}
+#history{position:static;inset:auto;margin:20px 18px;box-shadow:none}
+#collectionSearch{max-width:420px}
+.collection-grid-scroll,#referenceLibraryList{overflow:auto}
+#historylist,#referenceLibraryList{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:12px}
+#referencePickerDialog{width:min(1100px,calc(100vw - 24px));max-width:calc(100vw - 24px)}
+#referenceLibraryList .reference-library-item{min-width:0}
+#referenceLibraryList .reference-choice-copy{max-height:240px;overflow:auto}
+.collected-thread-head,.collected-thread-foot,.collected-thread-actions{flex-wrap:wrap}
+.collected-thread-actions button{padding:4px 7px;font-size:11px}
+@media(max-width:1190px){
+ .workbench{grid-template-columns:minmax(180px,.85fr) minmax(300px,1.8fr)}
+}
+@media(max-width:800px){
+ body{--studio-nav-width:0px}
+ .studio-nav{position:sticky;top:0;width:100%;padding:6px 8px;flex-direction:row;overflow:auto;border:0;border-bottom:1px solid var(--line)}
+ .studio-nav button{padding:8px;font-size:11px}
+ .workbench{grid-template-columns:minmax(0,1fr);width:calc(100% - 20px)}
+ .topbar{position:static}
+ #history{margin:10px}
+}
