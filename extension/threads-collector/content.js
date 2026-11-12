@@ -80,6 +80,17 @@
     };
   }
 
+  function saveErrorText(error) {
+    const message = String(error?.message || error || '');
+    if (/quota|bytes|storage.*full|exceed/i.test(message)) {
+      return 'Chrome 저장 공간이 가득 찼어요. 확장프로그램 팝업에서 글을 내보내고 오래된 항목을 정리한 뒤 다시 시도해주세요.';
+    }
+    if (/extension context invalidated|context invalidated|receiving end does not exist/i.test(message)) {
+      return '확장프로그램 연결이 끊겼어요. 확장프로그램을 새로고침한 뒤 이 스레드 탭도 새로고침해주세요.';
+    }
+    return `저장 오류: ${message.slice(0, 100) || 'Chrome 저장소에 기록하지 못했습니다.'}`;
+  }
+
   function makeControl(card, url, key) {
     if (hosts.has(key)) return;
     for (const existing of document.querySelectorAll('[data-gift-note-post-key]')) {
@@ -124,7 +135,12 @@
           await chrome.storage.local.set({ giftNoteThreadReferences: entries.slice(0, 300) });
           save.textContent = '저장했어요 ✓';
         }
-      } catch { save.textContent = '저장에 실패했어요'; }
+      } catch (error) {
+        console.error('[선물노트 스레드 수집기] 게시물 저장 실패:', error);
+        save.textContent = saveErrorText(error);
+        save.disabled = false;
+        save.title = String(error?.message || error || '저장 실패');
+      }
     });
     document.documentElement.append(host);
     hosts.set(key, { host, card, counts, url });

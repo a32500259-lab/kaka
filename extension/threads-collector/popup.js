@@ -35,10 +35,14 @@ $('scan').addEventListener('click',async()=>{
  finally{$('scan').disabled=false}
 });
 $('save').addEventListener('click',async()=>{
- const picked=[...document.querySelectorAll('#results input:checked')].map(c=>found[Number(c.dataset.index)]).filter(Boolean);
- const seen=new Set(saved.map(x=>postKey(x.url)));const now=new Date().toISOString();
- const fresh=picked.filter(p=>p.url&&!seen.has(postKey(p.url))).map(p=>({...p,id:crypto.randomUUID(),collectedAt:now}));
- saved=[...fresh,...saved].slice(0,300);await chrome.storage.local.set({giftNoteThreadReferences:saved});renderSaved();$('status').textContent=`${fresh.length}개 글을 이 Chrome에 저장했어요.`;
+ const button=$('save');button.disabled=true;
+ try{
+  const picked=[...document.querySelectorAll('#results input:checked')].map(c=>found[Number(c.dataset.index)]).filter(Boolean);
+  const seen=new Set(saved.map(x=>postKey(x.url)));const now=new Date().toISOString();
+  const fresh=picked.filter(p=>p.url&&!seen.has(postKey(p.url))).map(p=>({...p,id:crypto.randomUUID(),collectedAt:now}));
+  saved=[...fresh,...saved].slice(0,300);await chrome.storage.local.set({giftNoteThreadReferences:saved});renderSaved();$('status').textContent=`${fresh.length}개 글을 이 Chrome에 저장했어요.`;
+ }catch(error){console.error('[선물노트 스레드 수집기] 선택 게시물 저장 실패:',error);$('status').textContent=/quota|bytes|storage.*full|exceed/i.test(String(error?.message||error))?'Chrome 저장 공간이 가득 찼어요. 기존 글을 내보낸 뒤 오래된 항목을 정리해주세요.':`저장 오류: ${String(error?.message||error||'Chrome 저장소 오류').slice(0,120)}`}
+ finally{button.disabled=document.querySelectorAll('#results input:checked').length===0}
 });
 $('export').addEventListener('click',async()=>{
  await loadSaved();if(!saved.length){$('status').textContent='내보낼 참고 글이 아직 없어요.';return}

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "선물노트 스레드 수집기",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "Threads 게시물을 직접 수집하고 선물노트 사이트의 수집 목록과 동기화합니다.",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAsoD/WbklAkESmwymL5meQHxZmSa/oNhOgeGgOWVgibd5WF7J3kcj5RGesCM8EjePguFxQDzfSSsdUNJby/V9LJOH6KbvuBM3/LAToR1sZMPdC/FZUJx1SoHw69GnIIiRGZ3JF6hMzQSO79qVZgO1rGnh9KxWgketzfjL959Bt8N2FycaOGr+OD5gWW+itKNiNvpIetw7+jF8u8bHtv7BX1lMXjwmSA4QqvyoNtt0fQ09xlu6ZUNaQ/Klqi37EYra7AjUFTEjRwuNSo+NMVw3fMYjRFM2Tn0y6tZBKKUCrA0/5QGdIswMCAazdbv2wH+YHVytJQqZo3+QCfnkoPf77QIDAQAB",
   "permissions": ["activeTab", "scripting", "storage", "downloads"],
