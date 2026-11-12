@@ -88,6 +88,32 @@ function applyReferenceRhythm(opening,rhythm){
  }
  return opening.join(rhythm.blankLine?'\n\n':'\n');
 }
+function completeProductEmoji(post, suggested, productName){
+ const matching = [
+  [/목욕|샤워|세정/, '🛁'],
+  [/커피|머그|텀블러|차 세트/, '☕'],
+  [/무드등|조명/, '💡'],
+  [/키보드|노트북|마우스/, '💻'],
+  [/꽃|화분|식물/, '🌷'],
+  [/가방|파우치/, '👜'],
+  [/그릇|식기/, '🍽']
+ ].filter(([pattern])=>pattern.test(productName)).map(([,emoji])=>emoji);
+ const used=new Set();
+ const lines=post.split('\n').map(line=>line.replace(THREADS_EMOJI_PATTERN,emoji=>{
+  const base=emoji.replace(/[\uFE0E\uFE0F]/g,'');
+  if(used.has(base)||used.size>=4)return '';
+  used.add(base);return emoji;
+ }).trimEnd());
+ const choices=[...(Array.isArray(suggested)?suggested:[]),...matching,'🎁','✨','💛'];
+ const openLines=lines.map((line,index)=>({line,index})).filter(({line})=>line&&!line.match(THREADS_EMOJI_PATTERN));
+ for(const {index} of openLines){
+  if(used.size>=3)break;
+  const choice=choices.find(emoji=>THREADS_SAFE_EMOJI.has(emoji)&&!used.has(emoji));
+  if(!choice)break;
+  lines[index]+=' '+choice;used.add(choice);
+ }
+ return lines.join('\n');
+}
 export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  if(!env.GEMINI_API_KEY||env.GEMINI_FREE_TIER_CONFIRMED!=='true')throw new WriterError('Gemini 무료 등급 연결이 필요합니다.',503,'AI_NOT_CONFIGURED');
  const visuals=imageParts(input,evidence);
@@ -104,6 +130,8 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
   ? '선택한 referenceThreads는 문장 전개를 보여주는 예시다. 먼저 첫 문장이 어떻게 말을 걸고, 다음 문장이 무엇을 밝혀 주고, 끝에서 어떻게 독자의 경험으로 연결하는지 파악한다. 세 초안에서 후킹 → 설명 → 공감 순서는 지키면서, 그 예시의 눈에 띄는 전개 방식 하나 이상을 현재 상품의 확인된 특징과 선물 상황으로 다시 구현한다. 예를 들어 발견을 들려주고, 반전이나 짧은 감상을 덧붙인 뒤, 비슷한 고민이 있는지 묻는 글이라면 새 글에도 그 흐름이 보여야 한다. 느낌표나 이모지만 붙이는 것은 전개 반영으로 보지 않는다. 설명 줄에는 사용 권유 대신 확인된 제품 특징이나 선택 기준을 넣는다. 계정명, 시간, 반응 숫자, 맞팔 유도, 원문의 상품 및 수익 이야기, 경험과 문장은 가져오지 않는다.'
   : '';
  const responseSchema=structuredClone(schema);responseSchema.properties.photoNotes.description='상품 메인 사진을 실제로 본 결과. 전달된 사진마다 눈에 보이는 색·형태·구성 중 확인 가능한 특징 하나를 간결하게 적는다.';
+ responseSchema.properties.productEmoji={type:'ARRAY',items:{type:'STRING',enum:[...THREADS_SAFE_EMOJI]},minItems:3,maxItems:4,description:'이 상품과 선물 상황에 가장 어울리는 서로 다른 이모지 3~4개'};
+ responseSchema.required.push('productEmoji');
  if(referenceInstruction){
   requestData.options.recentDrafts=[];
  }
@@ -159,6 +187,7 @@ function finishGiftPosts(data,result,input,evidence,visuals,targetLength,rhythm,
    posts[kind]=posts[kind].replace(/(?<!\.)\.(?!\.)(?=\s|$)/g,'');
   }
  }
+ posts.recommend=completeProductEmoji(posts.recommend,data.productEmoji,evidence.name);
  posts.recommend+='\n\n카카오톡 선물하기 : '+evidence.link;
  const appliedMarks=rhythm?[rhythm.pause,rhythm.exclamation,rhythm.question].filter(mark=>mark&&posts.recommend.split('\n\n카카오톡')[0].includes(mark)):[];
  const referenceStyle=appliedMarks.length?'본문에서 확인한 원문 부호 '+appliedMarks.join(' / '):'';
