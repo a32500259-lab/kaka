@@ -67,11 +67,11 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  const requestData=requestInput(input,evidence);
  const lengthInstruction=`각 초안의 hook, explanation, empathy를 첫 세 줄로 조립한다. 각 필드는 한 줄씩 쓴다. 필요하면 continuation에 이어 쓸 문단을 넣는다. 본문 합계는 공백 포함, 줄바꿈과 링크 제외 ${minimum}~${maximum}자다. 2~3개 이모지, 가격 제외, 허위 체험 금지를 유지한다. 생활 공감은 해당 생활 상황, 고르는 기준은 실제 선택 기준을 둘째 줄에 설명한다.`;
  const referenceInstruction=requestData.options.referenceThreads.length
-  ? 'referenceThreads에서 말끝, 문장 길이, 반응을 덧붙이는 방식 중 실제로 보이는 특징 두 가지를 찾아 referenceStyle에 짧게 기록하고, 그 특징을 세 초안의 문장에 직접 적용한다. 계정명, 시간, 반응 숫자, 맞팔 유도, 원문 주제는 문체 근거에서 제외한다. 기존 예시보다 선택한 참고 글의 문체를 우선한다.'
+  ? '참고 글 없이 쓰는 경우와 같은 기준으로 먼저 상품과 선물 상황이 자연스럽게 이어지는 글을 구성한다. 그 흐름에 잘 어울리는 참고 글의 말끝, 리듬, 짧은 반응 중 한 가지를 자연스러운 위치에만 반영한다. 짧게 끊는 말투 때문에 앞뒤 문맥을 잃거나, 느낌표나 말줄임표를 억지로 추가하지 않는다. 계정명, 시간, 반응 숫자, 맞팔 유도, 원문 주제는 참고에서 제외한다. referenceStyle에는 완성된 글에서 실제로 확인할 수 있는 반영 특징만 기록하고, 자연스럽게 맞는 특징이 없으면 빈 문자열로 반환한다.'
   : '';
  const responseSchema=structuredClone(schema);
  if(referenceInstruction){
-  responseSchema.properties.referenceStyle={type:'STRING',description:'참고 글에서 골라 초안에 적용한 문체 특징 두 가지. 원문 인용 없이 짧게 설명.'};
+  responseSchema.properties.referenceStyle={type:'STRING',description:'완성된 추천 글에서 확인할 수 있는 문체 특징 한 가지. 적용한 특징이 없으면 빈 문자열.'};
   responseSchema.required.push('referenceStyle');
  }
  for(const kind of ['recommend','conversation','guide']){
@@ -86,7 +86,7 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
    required:['hook','explanation','empathy','continuation']
   };
  }
- const body={systemInstruction:{parts:[{text:[contract,referenceInstruction,runtimePrompt,lengthInstruction].join('\n')}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestData)},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema}};
+ const body={systemInstruction:{parts:[{text:[contract,runtimePrompt,lengthInstruction,referenceInstruction].join('\n')}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestData)},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema}};
  let response;
   try{response=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify(body),signal:AbortSignal.timeout(65000)})}catch(error){throw new WriterError(error.name==='TimeoutError'?'Gemini 응답이 늦습니다. 잠시 후 다시 시도해주세요.':'Gemini에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',504,'AI_TIMEOUT')}
  let result;try{result=await response.json()}catch{throw new WriterError('Gemini 응답을 읽지 못했습니다.',502,'AI_INVALID_RESPONSE')}
