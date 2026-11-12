@@ -64,13 +64,29 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  const targetLength=Number(input.targetLength||100);
  const minimum=Math.round(targetLength*.9);
  const maximum=Math.round(targetLength*1.1);
- const lengthInstruction=`이번 요청의 최우선 분량은 본문마다 ${minimum}~${maximum}자다. 기준 예시의 문장 길이만 모방해서 100자로 끝내지 않는다. ${targetLength===300?'각 글에 약 90~110자씩 세 문단을 쓴다. 발견과 관심을 가진 상황, 확인된 특징으로 고르는 이유, 같은 취향에서 이어지는 가벼운 마무리로 전개한다.':targetLength===200?'각 글에 약 90~110자씩 두 문단을 쓴다. 첫 문단에서 구체적 상황과 발견, 두 번째에서 그 특징과 이어지는 선택 고민을 말한다.':'짧은 두 문단으로 쓴다.'} 문단 안은 의미 단위 줄바꿈. 2~3개 이모지, 가격 제외, 허위 체험 금지, 자연스러운 말투와 부호 규칙을 모두 유지한다. 반환 전에 본문 길이를 점검해 범위에 맞게 편집한다.`;
+ const requestData=requestInput(input,evidence);
+ const lengthInstruction=`각 초안의 hook, explanation, empathy를 첫 세 줄로 조립한다. 각 필드는 한 줄씩 쓴다. 필요하면 continuation에 이어 쓸 문단을 넣는다. 본문 합계는 공백 포함, 줄바꿈과 링크 제외 ${minimum}~${maximum}자다. 2~3개 이모지, 가격 제외, 허위 체험 금지를 유지한다. 생활 공감은 해당 생활 상황, 고르는 기준은 실제 선택 기준을 둘째 줄에 설명한다.`;
+ const referenceInstruction=requestData.options.referenceThreads.length
+  ? 'referenceThreads에서 말끝, 문장 길이, 반응을 덧붙이는 방식 중 실제로 보이는 특징 두 가지를 찾아 referenceStyle에 짧게 기록하고, 그 특징을 세 초안의 문장에 직접 적용한다. 계정명, 시간, 반응 숫자, 맞팔 유도, 원문 주제는 문체 근거에서 제외한다. 기존 예시보다 선택한 참고 글의 문체를 우선한다.'
+  : '';
  const responseSchema=structuredClone(schema);
- for(const kind of ['recommend','conversation','guide']){
-  if(targetLength>100)responseSchema.properties[kind]={type:'ARRAY',minItems:targetLength/100,maxItems:targetLength/100,items:{type:'STRING',description:'한 문단 90~110자. 공백 포함, 줄바꿈 제외. 같은 이야기의 다음 부분. 문단 안 의미 단위 줄바꿈을 포함한다.'}};
-  responseSchema.properties[kind].description=`필수 분량 ${minimum}~${maximum}자. 공백 포함, 줄바꿈 제외. ${lengthInstruction}`;
+ if(referenceInstruction){
+  responseSchema.properties.referenceStyle={type:'STRING',description:'참고 글에서 골라 초안에 적용한 문체 특징 두 가지. 원문 인용 없이 짧게 설명.'};
+  responseSchema.required.push('referenceStyle');
  }
- const body={systemInstruction:{parts:[{text:contract+'\n'+runtimePrompt+'\n'+lengthInstruction}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestInput(input,evidence))},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema}};
+ for(const kind of ['recommend','conversation','guide']){
+  responseSchema.properties[kind]={
+   type:'OBJECT',
+   properties:{
+    hook:{type:'STRING',description:'첫 줄. 눈길을 끄는 구체적인 발견이나 상황'},
+    explanation:{type:'STRING',description:'둘째 줄. 첫 줄에 이어지는 확인된 특징이나 선택 기준'},
+    empathy:{type:'STRING',description:'셋째 줄. 앞의 설명과 이어지는 일상 고민이나 취향'},
+    continuation:{type:'STRING',description:'분량에 필요할 때만 자연스럽게 이어가는 문단. 필요 없으면 빈 문자열'}
+   },
+   required:['hook','explanation','empathy','continuation']
+  };
+ }
+ const body={systemInstruction:{parts:[{text:[contract,referenceInstruction,runtimePrompt,lengthInstruction].join('\n')}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestData)},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema}};
  let response;
   try{response=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify(body),signal:AbortSignal.timeout(65000)})}catch(error){throw new WriterError(error.name==='TimeoutError'?'Gemini 응답이 늦습니다. 잠시 후 다시 시도해주세요.':'Gemini에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',504,'AI_TIMEOUT')}
  let result;try{result=await response.json()}catch{throw new WriterError('Gemini 응답을 읽지 못했습니다.',502,'AI_INVALID_RESPONSE')}
@@ -84,21 +100,18 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  const raw=candidate.content?.parts?.filter(x=>!x.thought&&typeof x.text==='string').map(x=>x.text).join('')||'';let data;
  try{data=JSON.parse(raw.replace(/^```(?:json)?\s*|\s*```$/g,''))}catch{throw new WriterError('글 응답 형식이 올바르지 않습니다. 다시 시도해주세요.',502,'AI_INVALID_RESPONSE')}
  for(const kind of ['recommend','conversation','guide']){
-  if(Array.isArray(data[kind])&&data[kind].every(part=>typeof part==='string'))data[kind]=data[kind].join('\n\n');
-  if(typeof data[kind]==='string')data[kind]=cleanModelPost(data[kind]);
+  const draft=data[kind];
+  const opening=['hook','explanation','empathy'].map(key=>cleanModelPost(draft?.[key]).replace(/\s*\r?\n\s*/g,' '));
+  if(opening.some(line=>!line))throw new WriterError('후킹·설명·공감 중 빠진 줄이 있어요.',502,'AI_VALIDATION_FAILED');
+  data[kind]=[opening.join('\n'),cleanModelPost(draft?.continuation)].filter(Boolean).join('\n\n');
  }
  const issues=validatePosts(data);
  if(issues.length)throw new WriterError('생성된 글을 확인한 결과 다시 작성이 필요합니다. '+issues[0],502,'AI_VALIDATION_FAILED');
- const recommendationParagraphs=formatThreadsPost(data.recommend).split(/\n[ \t]*\n/);
  const posts=Object.fromEntries(['recommend','conversation','guide'].map(k=>[k,formatThreadsPost(data[k])]));
- if(targetLength===100&&recommendationParagraphs.length===3&&recommendationParagraphs.every(paragraph=>!paragraph.includes('\n'))){
-  const [opening,...bodyLines]=recommendationParagraphs;
-  posts.recommend=opening+'\n\n'+bodyLines.join('\n');
- }
- posts.recommend=posts.recommend.replace(/(?<=[.!?…])[ \t]+(?=[가-힣\p{Extended_Pictographic}])/gu,'\n');
  for(const kind of ['recommend','conversation','guide']){
   posts[kind]=posts[kind].replace(/(?<!\.)\.(?!\.)(?=\s|$)/g,'');
  }
  posts.recommend+='\n\n카카오톡 선물하기 : '+evidence.link;
- return {posts,rationale:data.audience+' · '+data.angle,evidence:data.evidence.slice(0,6),photoNotes:Array.isArray(data.photoNotes)?data.photoNotes.slice(0,4):[],provider:'Gemini',model:result.modelVersion||GEMINI_MODEL,generatedAt:new Date().toISOString(),targetLength:Number(input.targetLength||100),source:evidence.source,checkedAt:evidence.checkedAt,visualSegments:visuals.length/2};
+ const referenceStyle=requestData.options.referenceThreads.length?cleanModelPost(data.referenceStyle).slice(0,160):'';
+ return {posts,referenceStyle,rationale:data.audience+' · '+data.angle,evidence:data.evidence.slice(0,6),photoNotes:Array.isArray(data.photoNotes)?data.photoNotes.slice(0,4):[],provider:'Gemini',model:result.modelVersion||GEMINI_MODEL,generatedAt:new Date().toISOString(),targetLength,source:evidence.source,checkedAt:evidence.checkedAt,visualSegments:visuals.length/2};
 }

@@ -95,7 +95,7 @@ async function generate(){
   if(['facts','age','occasion','customOccasion','targetLength'].some(id=>$(id).value!==input[id])){$('status').textContent='작성 중 선택이 바뀌었어요. 다시 만들기를 눌러주세요.';return}
   const photos=imageSet();current={...result,mode:'recommend',sections:[result.posts.recommend],photos,link,title:loadedProduct.name};
   recentDrafts.push(result.posts.recommend);if(recentDrafts.length>2)recentDrafts.shift();render();window.dispatchEvent(new Event('content-ready'));
-  $('status').textContent=`Gemini가 새로 작성했어요 · 사진 ${result.visualSegments}개 구간${referenceThreads.length?` · 수집 글 ${referenceThreads.length}개 참고`:''}`+(failures.length?' · 일부 사진은 읽지 못해 제외했어요.':'');
+  $('status').textContent=`Gemini가 새로 작성했어요 · 사진 ${result.visualSegments}개 구간${result.referenceStyle?` · 참고한 말투 · ${result.referenceStyle}`:''}`+(failures.length?' · 일부 사진은 읽지 못해 제외했어요.':'');
  }catch(error){
   if(serial!==requestNumber||inputLink()!==link)return;
   if(error.code==='AUTH_REQUIRED')showConnection();
