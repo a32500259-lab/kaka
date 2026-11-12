@@ -24,6 +24,7 @@
       <button type="button" data-studio="workbench" aria-current="page">♧　스레드 스튜디오</button>
       <button type="button" data-studio="daily">✎　일상글 스튜디오</button>
       <button type="button" data-studio="history">▤　스레드 수집글</button>
+      <button type="button" data-studio="archive">▣　내 글 보관함</button>
     </nav>
     <section class="workbench" id="workbench" aria-label="스레드 콘텐츠 편집기">
       <aside class="benchmark-panel">
@@ -74,6 +75,16 @@
 
     <section hidden id="history"><div class="section-title"><div><h2>스레드 수집글</h2><p class="help">Chrome 확장프로그램에서 모은 게시물이 여기에 표시됩니다.</p></div><button id="closeHistory" type="button">닫기</button></div><p class="collection-status" id="collectionStatus" role="status">Chrome 확장프로그램과 연결하는 중…</p><input id="collectionSearch" type="search" aria-label="수집글 검색" placeholder="수집글 검색"><div class="collection-grid-scroll"><div id="historylist" aria-live="polite"></div></div></section>
     <section hidden id="rulesPanel"><div class="stage-heading"><span>◇</span><div><h2>우리 계정의 글쓰기 지침</h2><p>2030 선물 큐레이터 · 자연스러운 대화체</p></div></div><p>모든 글은 첫 세 줄을 후킹 → 설명 → 공감 순으로 씁니다.</p><ul><li>구체적인 발견으로 시작하고, 상품 특징과 선물 고민을 이어갑니다.</li><li>문장 단위 줄바꿈, 주제가 전환되면 한 줄을 띄웁니다.</li><li>가격이나 확인되지 않은 사용 후기는 넣지 않습니다.</li><li>큐레이터 수수료 안내는 저장 사진 하단에 한 줄로 표시합니다.</li></ul><a href="writer-prompt.md?v=25" download>Gemini에 전달하는 글쓰기 지침 ↗</a><p><button id="closeRules" type="button">작업실로 돌아가기</button></p></section>
+    <section id="draftArchive" hidden aria-labelledby="archiveTitle">
+      <h2 id="archiveTitle">내 글 보관함</h2>
+      <div class="archive-filters" role="group" aria-label="저장한 글 종류">
+        <button type="button" data-archive="product" aria-pressed="true">스레드 스튜디오</button>
+        <button type="button" data-archive="daily" aria-pressed="false">일상글 스튜디오</button>
+      </div>
+      <p id="archiveCount" class="help"></p>
+      <p id="archiveStatus" class="status-line" role="status"></p>
+      <div class="collection-grid-scroll"><div id="archiveList"></div></div>
+    </section>
     <footer><span>선물노트 · Threads Studio</span><span>수집한 스레드와 초안은 이 브라우저에 저장됩니다.</span></footer>
   </main>
 

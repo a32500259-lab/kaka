@@ -9,9 +9,10 @@ let activeEditor='workbench';
 function togglePanel(panel){
  if(panel==='workbench'||panel==='daily')activeEditor=panel;
  const daily=activeEditor==='daily';
- $('workbench').hidden=panel==='rules'||panel==='history';
+ $('workbench').hidden=panel!=='workbench'&&panel!=='daily';
  $('rulesPanel').hidden=panel!=='rules';
  $('history').hidden=panel!=='history';
+ $('draftArchive').hidden=panel!=='archive';
  for(const id of ['productEditor','phoneText','phonePhotos','productImportOpen'])$(id).hidden=daily;
  for(const id of ['dailyEditor','dailyPhoneText'])$(id).hidden=!daily;
  for(const button of document.querySelectorAll('[data-studio]')){

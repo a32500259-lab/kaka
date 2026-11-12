@@ -1,4 +1,4 @@
-import {scenes} from './scene-options.js?v=10ae61127883c5d2';
+import {scenes} from './scene-options.js?v=f76c140531aa3a52';
 const $=id=>document.getElementById(id);
 const occasion=$('occasion');occasion.replaceChildren();
 const automatic=document.createElement('option');automatic.value='auto';automatic.textContent='상품에 맞게, 매번 새롭게';occasion.append(automatic);
@@ -9,9 +9,10 @@ let activeEditor='workbench';
 function togglePanel(panel){
  if(panel==='workbench'||panel==='daily')activeEditor=panel;
  const daily=activeEditor==='daily';
- $('workbench').hidden=panel==='rules'||panel==='history';
+ $('workbench').hidden=panel!=='workbench'&&panel!=='daily';
  $('rulesPanel').hidden=panel!=='rules';
  $('history').hidden=panel!=='history';
+ $('draftArchive').hidden=panel!=='archive';
  for(const id of ['productEditor','phoneText','phonePhotos','productImportOpen'])$(id).hidden=daily;
  for(const id of ['dailyEditor','dailyPhoneText'])$(id).hidden=!daily;
  for(const button of document.querySelectorAll('[data-studio]')){

@@ -79,6 +79,18 @@ body{--studio-nav-width:196px;padding-left:var(--studio-nav-width);background:#f
 #dailyEditor h2 label{margin:0}
 #dailyEditor .edit-top{display:block;margin-top:12px;width:100%}
 #dailyPhoneText{white-space:pre-wrap;overflow-wrap:anywhere}
+#draftArchive{margin:24px 18px 32px;padding:24px;background:#fff;border:1px solid var(--line);border-radius:18px}
+#archiveTitle{margin:0 0 16px}
+.archive-filters{display:flex;gap:8px;flex-wrap:wrap}
+.archive-filters button[aria-pressed="true"]{background:#eee7ff;border-color:#a895ed;color:#5531bb;font-weight:700}
+#archiveCount{margin:14px 0}
+#archiveList{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:12px}
+.archive-card{min-width:0;display:flex;flex-direction:column;gap:12px;border:1px solid var(--line);border-radius:14px;padding:14px;background:#fff}
+.archive-card header{display:flex;align-items:center;gap:8px}
+.archive-card header small{display:block;color:var(--muted)}
+.archive-card p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;flex:1}
+.archive-actions{display:flex;gap:6px;flex-wrap:wrap}
+.archive-actions button{font-size:12px;padding:6px 8px}
 
 /* Match the desktop Threads composer shown in the reference: 522px of
    text at 15px, scaled down to fit the preview without changing its wraps. */

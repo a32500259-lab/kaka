@@ -148,7 +148,7 @@ $('url').addEventListener('input',()=>{if(inputLink()!==loadedUrl){generationCon
 $('url').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();loadProduct().then(ok=>{if(ok)window.dispatchEvent(new Event('product-loaded'))})}});
 for(const id of fields.filter(id=>id!=='url'&&id!=='photoCount'))$(id).addEventListener('input',()=>{if(current){current.dirty=true;$('copyBtn').disabled=true;$('save').disabled=true;$('status').textContent='입력이 바뀌었어요. 추천 글 만들기를 눌러 반영해주세요.'}});
 $('copyBtn').onclick=async()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}try{await navigator.clipboard.writeText(exportText());$('copyStatus').textContent=current.posts&&current.mode!=='recommend'?'복사 완료! 선택한 글만 스레드에 붙여넣으세요.':'복사 완료! 스레드에 붙여넣고 아래 사진을 따로 첨부해주세요.'}catch{$('copyText').focus();$('copyText').select();$('copyStatus').textContent='글을 선택했어요. Ctrl+C로 복사해주세요.'}};
- $('save').onclick=()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}const draft={...structuredClone(current),fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),date:new Date().toLocaleString('ko-KR')};try{const next=[draft,...drafts].slice(0,30);localStorage.setItem('gift-note-drafts-v2',JSON.stringify(next));drafts=next;$('status').textContent='수정한 글과 사진 구성을 이 브라우저에 저장했어요.'}catch{$('status').textContent='저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}};
+ $('save').onclick=()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}const draft={...structuredClone(current),body:exportText(),fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),date:new Date().toLocaleString('ko-KR')};try{const next=[draft,...drafts];localStorage.setItem('gift-note-drafts-v2',JSON.stringify(next));drafts=next;$('status').textContent='내 글 보관함에 상품 초안을 저장했어요.'}catch{$('status').textContent='저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}};
 function cleanCollectedText(value) {
  const lines=String(value||'').trim().split(/\r?\n/);
  let end=lines.length;
@@ -204,6 +204,8 @@ function referencePayload(){
 $('collectionSearch').addEventListener('input',renderCollectedThreads);
 
 const dailySource=$('dailySource'),dailyOutput=$('dailyOutput'),dailyLength=$('dailyLength'),dailyStatus=$('dailyStatus');
+const dailyArchiveKey='gift-note-daily-archive';
+let dailyDrafts=[];
 function updateDailyPreview(){
  const output=dailyOutput.value;
  $('dailyPhoneText').textContent=output||'일상글을 만들면 여기에 보여요.';
@@ -211,7 +213,10 @@ function updateDailyPreview(){
  $('dailyCopy').disabled=$('dailySave').disabled=!output.trim();
 }
 try{
- const draft=JSON.parse(localStorage.getItem('gift-note-daily-draft')||'null');
+ const saved=JSON.parse(localStorage.getItem(dailyArchiveKey)||'null');
+ const legacy=JSON.parse(localStorage.getItem('gift-note-daily-draft')||'null');
+ dailyDrafts=Array.isArray(saved)?saved:legacy?.output?[legacy]:[];
+ const draft=dailyDrafts[0];
  if(draft){dailySource.value=draft.source||'';dailyOutput.value=draft.output||'';dailyLength.value=draft.length||'100'}
 }catch{}
 updateDailyPreview();
@@ -238,10 +243,93 @@ $('dailyCopy').addEventListener('click',async()=>{
 });
 $('dailySave').addEventListener('click',()=>{
  try{
-  localStorage.setItem('gift-note-daily-draft',JSON.stringify({source:dailySource.value,output:dailyOutput.value,length:dailyLength.value}));
-  dailyStatus.textContent='이 브라우저에 일상글을 저장했어요.';
+  const draft={source:dailySource.value,output:dailyOutput.value,length:dailyLength.value,date:new Date().toLocaleString('ko-KR')};
+  const next=[draft,...dailyDrafts];
+  localStorage.setItem(dailyArchiveKey,JSON.stringify(next));
+  dailyDrafts=next;
+  dailyStatus.textContent='내 글 보관함에 일상글을 저장했어요.';
  }catch{dailyStatus.textContent='저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}
 });
+function restoreArchiveDraft(kind,draft){
+ if(kind==='daily'){
+  if($('dailyGenerate').disabled)return false;
+  dailySource.value=draft.source||'';
+  dailyOutput.value=draft.output;
+  dailyLength.value=draft.length||'100';
+  updateDailyPreview();
+  dailyStatus.textContent='보관함에서 글을 불러왔어요.';
+  document.querySelector('[data-studio="daily"]').click();
+  return true;
+ }
+ if(loading||generating)return false;
+ const defaults={category:'auto',age:'auto',occasion:'auto',targetLength:'100'};
+ for(const id of fields){
+  if(id!=='photoCount')$(id).value=draft.fields?.[id]??defaults[id]??'';
+ }
+ $('url').value=draft.fields?.url||draft.link||'';
+ $('name').value=draft.fields?.name||draft.title||'';
+ current={...structuredClone(draft),dirty:false,photos:Array.isArray(draft.photos)?draft.photos.filter(photo=>safeImage(photo?.src)):[]};
+ if(!$('images').value)$('images').value=current.photos.map(photo=>photo.src).join('\n');
+ loadedUrl=inputLink();
+ selectedPhotoSources=new Set(current.photos.map(photo=>photo.src));
+ loadedProduct={name:$('name').value,images:$('images').value.split('\n').filter(safeImage)};
+ setPhotoCandidates(loadedProduct);
+ if(!current.photos.length)selectedPhotoSources.clear();
+ syncPhotoOptions();
+ updatePhotoSelectionUi();
+ renderPhotoChoices();
+ document.querySelector('[data-studio="workbench"]').click();
+ render();
+ window.dispatchEvent(new Event('product-loaded'));
+ $('status').textContent='보관함에서 초안을 불러왔어요.';
+ return true;
+}
+let archiveKind='product';
+function renderArchive(){
+ const records=(archiveKind==='daily'?dailyDrafts:drafts).filter(draft=>draft&&typeof draft==='object');
+ const root=$('archiveList');
+ root.replaceChildren();
+ $('archiveStatus').textContent='';
+ $('archiveCount').textContent='저장한 글 '+records.length+'개';
+ document.querySelectorAll('[data-archive]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.archive===archiveKind)));
+ if(!records.length){$('archiveStatus').textContent='아직 저장한 글이 없어요.';return}
+ for(const draft of records){
+  const kind=archiveKind;
+  const body=String(kind==='daily'?draft.output||'':draft.body||postForMode(draft));
+  const card=document.createElement('article');
+  card.className='archive-card';
+  const header=document.createElement('header');
+  const avatar=document.createElement('span');
+  avatar.className='avatar';avatar.textContent='선';
+  const identity=document.createElement('div');
+  const name=document.createElement('strong');
+  name.textContent='howabout.pick';
+  const date=document.createElement('small');
+  date.textContent=draft.date||'';
+  identity.append(name,date);header.append(avatar,identity);
+  const content=document.createElement('p');
+  content.textContent=body;
+  const actions=document.createElement('div');
+  actions.className='archive-actions';
+  const copy=document.createElement('button');
+  copy.type='button';copy.textContent='글 복사';
+  copy.addEventListener('click',async()=>{
+   try{await navigator.clipboard.writeText(body);$('archiveStatus').textContent='글을 복사했어요.'}
+   catch{$('archiveStatus').textContent='복사하지 못했어요. 본문을 선택해 복사해주세요.'}
+  });
+  const edit=document.createElement('button');
+  edit.type='button';edit.className='save-button';edit.textContent='이어서 편집';
+  edit.addEventListener('click',()=>{
+   if(!restoreArchiveDraft(kind,draft))$('archiveStatus').textContent='작성 중인 작업이 끝나면 다시 눌러주세요.';
+  });
+  actions.append(copy,edit);card.append(header,content,actions);root.append(card);
+ }
+}
+document.querySelector('[data-studio="archive"]').addEventListener('click',renderArchive);
+document.querySelectorAll('[data-archive]').forEach(button=>button.addEventListener('click',()=>{
+ archiveKind=button.dataset.archive;
+ renderArchive();
+}));
 function syncGenerationContext(){const count=selectedReferencePosts().filter(post=>typeof post.text==='string'&&post.text.trim()).length;$('generationContext').textContent=`${loadedProduct?'상품 준비됨':'상품 링크를 먼저 불러와 주세요'} · 참고 글 ${count}개${count?' 생성에 반영':' 선택됨'} · 후킹 → 설명 → 공감`}
 function renderReferenceSelection(){
  const root=$('selectedReferences');if(!root)return;root.replaceChildren();
