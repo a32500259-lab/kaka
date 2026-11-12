@@ -64,7 +64,7 @@ function imageParts(input,evidence){
 function requestInput(input,evidence){
  const targetLength=Number(input.targetLength||100);
  if(![100,200,300].includes(targetLength))throw new WriterError('글자 수는 100자, 200자, 300자 중 선택해주세요.',400,'INVALID_INPUT');
- const references=Array.isArray(input.referenceThreads)?input.referenceThreads.slice(0,3).map(item=>cleanModelPost(typeof item==='string'?item:item?.text).slice(0,1200)).filter(Boolean):[];
+ const references=Array.isArray(input.referenceThreads)?input.referenceThreads.slice(0,3).map(item=>String(typeof item==='string'?item:item?.text||'').replace(/\r\n/g,'\n').trim().slice(0,1200)).filter(Boolean):[];
  const options={targetLength,age:String(input.age||'auto').slice(0,30),occasion:String(input.occasion||'auto').slice(0,40),customOccasion:String(input.customOccasion||'').slice(0,180),manualNotes:String(input.facts||'').slice(0,2500),recentDrafts:Array.isArray(input.recentDrafts)?input.recentDrafts.filter(x=>typeof x==='string').slice(-2).map(x=>cleanModelPost(x).slice(0,500)):[],referenceThreads:references};
  if(options.occasion==='직접'&&!options.customOccasion.trim())throw new WriterError('직접 선택한 상황을 한 줄 적어주세요.',400,'INVALID_INPUT');
  return {options,product:{name:evidence.name,description:evidence.description,detailText:evidence.detailText,productFacts:evidence.productFacts,source:evidence.source},note:'manualNotes는 사용자가 보완한 자료다. 이미지와 충돌하면 단정하지 않는다. 상품 사진은 부분 구간이며 안 보이는 내용을 추정하지 않는다.'};
@@ -103,7 +103,7 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
   };
  }
  const stylePriority=referenceInstruction
-  ? '문체 강도 90/100: 수집 글을 선택했으면 일반 문체 예시보다 참고 글의 말투를 강하게 우선한다. 반말·존댓말의 높낮이, 어미, 추임새, 문장 호흡, 느낌표와 말줄임표, 허용 목록 안의 이모지 종류·빈도·위치를 참고 글과 비슷하게 쓴다. 원문 이모지가 허용 목록 밖이면 쓰지 말고 목록 안에서 비슷한 감정의 이모지 하나를 고른다. 자모 웃음은 기존 지침대로 제외한다. 후킹·설명·공감의 순서와 상품 사실 확인 기준은 반드시 지킨다.'
+  ? '참고 문체 목표 95/100. 여러 참고 글이 있으면 첫 글을 주 기준으로 삼는다. 글을 쓰기 전에 원문의 말 높임, 문장 길이 대비, 짧게 끊는 위치, 빈 줄 간격, 반문·감탄, 문장부호의 종류와 반복 횟수(!, ?, ..., 쉼표 등), 부호 앞뒤 공백, 이모지의 개수와 위치를 살핀다. 눈에 띄는 특징을 설명에만 쓰지 말고 새 본문의 실제 문장에 재현한다. 원문에 !!! 또는 ?? ???가 두드러지면 새 글의 어울리는 위치에도 같은 리듬을 만든다. 이모지의 종류는 참고 글에서 가져오지 않는다. 새 글의 상품과 감정에 어울리는 이모지를 허용 목록에서 독립적으로 고르고, 원문에서는 배치와 빈도만 참고한다. 참고 글이 있을 때 이 문체 규칙이 일반 예시와 부호·이모지 기본값에 우선한다. 후킹·설명·공감의 순서와 확인된 상품 사실은 유지하고, 원문의 문장·계정명·개인 경험·홍보 내용은 옮기지 않는다.'
   : '';
  const body={systemInstruction:{parts:[{text:[contract,runtimePrompt,lengthInstruction,referenceInstruction,stylePriority].filter(Boolean).join('\n')}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestData)},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema}};
  let response;
@@ -129,11 +129,13 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  const issues=validatePosts(data);
  if(issues.length)throw new WriterError('생성된 글을 확인한 결과 다시 작성이 필요합니다. '+issues[0],502,'AI_VALIDATION_FAILED');
  const posts=Object.fromEntries(['recommend','conversation','guide'].map(k=>[k,formatThreadsPost(data[k])]));
- for(const kind of ['recommend','conversation','guide']){
-  posts[kind]=posts[kind].replace(/(?<!\.)\.(?!\.)(?=\s|$)/g,'');
+ if(!referenceInstruction){
+  for(const kind of ['recommend','conversation','guide']){
+   posts[kind]=posts[kind].replace(/(?<!\.)\.(?!\.)(?=\s|$)/g,'');
+  }
  }
  posts.recommend+='\n\n카카오톡 선물하기 : '+evidence.link;
- const proof=sanitizeThreadsEmoji(cleanModelPost(data.referenceProof)).replace(/(?<!\.)\.(?!\.)(?=\s|$)/g,'');
+ const proof=sanitizeThreadsEmoji(cleanModelPost(data.referenceProof));
  const referenceStyle=referenceInstruction&&proof&&posts.recommend.split('\n').includes(proof)
   ? cleanModelPost(data.referenceStyle).slice(0,160)+' · '+proof
   : '';
