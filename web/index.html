@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#faf9ff">
   <title>선물노트 · 스레드 스튜디오</title>
-  <link href="style.css?v=studio-20261112-2" rel="stylesheet">
+  <link href="style.css?v=studio-20261112-3" rel="stylesheet">
 </head>
 <body>
   <header class="topbar">
@@ -14,10 +14,11 @@
     <nav class="top-nav" aria-label="작업실 도구">
       <span class="threads-chip">▱ <b>Threads</b></span>
       <button class="reference-top" id="openReferencePicker" type="button"><span id="referenceCount">참고 글 0개</span></button>
+      <button class="product-top" id="productImportOpen" type="button" aria-current="step">＋ 상품 링크 가져오기</button>
       <button class="edit-top" id="generate" type="button">✎ 내 글 바꾸기</button>
       <button class="analysis-top" id="analyzeDraft" type="button">✧ 분석</button>
     </nav>
-    <div class="top-actions"><details class="more-tools"><summary aria-label="더 보기">···</summary><div class="more-tools-menu"><button id="productImportOpen" type="button">상품 링크 가져오기</button><button id="saved" type="button">수집한 스레드 <b id="count">0</b></button><button id="rulesNav" type="button">글쓰기 지침</button><span class="ai-status" id="aiConnectionState" role="status">Gemini 연결 확인 중…</span><button id="aiConnect" class="connect-button" type="button">작업실 연결</button></div></details><span class="saved-indicator">☁ 임시저장됨</span></div>
+    <div class="top-actions"><details class="more-tools"><summary aria-label="더 보기">···</summary><div class="more-tools-menu"><button id="saved" type="button">수집한 스레드 <b id="count">0</b></button><button id="rulesNav" type="button">글쓰기 지침</button><span class="ai-status" id="aiConnectionState" role="status">Gemini 연결 확인 중…</span><button id="aiConnect" class="connect-button" type="button">작업실 연결</button></div></details><span class="saved-indicator">☁ 임시저장됨</span></div>
   </header>
 
   <main id="workspace">
@@ -35,8 +36,6 @@
           <div class="two setting-row"><div><label for="occasion">작성 상황(예시)</label><select id="occasion"><option value="auto">상품에 맞게, 매번 새롭게</option></select><p class="help" id="occasionHelp">선물 받을 사람과 고르는 이유를 자연스럽게 이어요.</p></div><div><label for="targetLength">글 길이</label><select id="targetLength" aria-describedby="targetLengthHelp"><option value="100">짧게 · 약 100자</option><option value="200">중간 · 약 200자</option><option value="300">길게 · 약 300자</option></select><p class="help" id="targetLengthHelp">공백 포함 · 링크 제외 · 선택한 길이 ±10% 내외</p></div></div>
           <div hidden id="customOccasionWrap"><label for="customOccasion">어떤 상황인가요?</label><input id="customOccasion" maxlength="140" placeholder="예: 첫 출근을 앞둔 동생에게"></div><input id="age" type="hidden" value="auto"><input id="audience" type="hidden"><input id="angle" type="hidden"><select id="photoCount" hidden aria-hidden="true"><option value="0">0장</option></select>
         </section>
-
-        <div class="reference-toolbar"><button class="outline-button" id="openReferencePickerInline" type="button">▧ 수집한 스레드 불러오기</button><span class="reference-toolbar-count" id="referenceToolbarCount">선택한 참고 글 0개</span></div>
 
         <section class="writing-card" aria-labelledby="writingTitle">
           <div class="writing-heading"><div><h2 id="writingTitle">내 계정에 어울리는 글</h2><p>참고한 글을 바탕으로, 내 계정의 톤과 관점에 맞게 작성해 보세요.</p></div><span class="char-count" id="textCount"></span></div>
@@ -63,7 +62,7 @@
   <dialog id="photoPickerDialog" class="picker-dialog photo-picker-dialog"><section><div class="dialog-heading"><div><h2>상품 원문 사진 고르기</h2><p class="help">상세페이지에서 가져온 사진 중 1~3장을 선택할 수 있어요.</p></div><button id="closePhotoPicker" type="button">닫기</button></div><p id="photoPickerStatus" class="help" role="status"></p><div id="photoChoiceList" class="photo-choice-list"></div><p class="photo-rights-note">사진은 후보 추출용입니다. 상세페이지 이미지의 외부 재게시 범위는 판매자·브랜드 안내를 확인한 뒤 사용해주세요.</p><div class="dialog-actions"><button id="clearPhotoSelection" type="button">선택 해제</button><button id="applyPhotoSelection" type="button" class="primary">선택한 사진 추가</button></div></section></dialog>
   <dialog id="aiConnectionDialog"><form id="aiConnectionForm"><div class="dialog-heading"><div><h2>내 작업실 연결</h2><p class="help">Gemini 무료 연결을 확인해요.</p></div></div><label for="writerConnectionCode">작업실 연결 코드</label><input id="writerConnectionCode" type="password" autocomplete="off" required><label class="remember-connection"><input id="rememberWriterConnection" type="checkbox"> 이 브라우저에 연결 유지</label><p class="help">API 키는 서버 비밀 설정에서만 사용합니다.</p><p id="aiConnectionMessage" role="status"></p><div class="dialog-actions"><button id="aiConnectionClose" type="button">닫기</button><button type="submit" class="primary">연결 확인</button></div></form></dialog>
 
-  <script src="app.js?v=studio-20261112-2" type="module"></script>
-  <script src="workflow.js?v=studio-20261112-2" type="module"></script>
+  <script src="app.js?v=studio-20261112-3" type="module"></script>
+  <script src="workflow.js?v=studio-20261112-3" type="module"></script>
 </body>
 </html>

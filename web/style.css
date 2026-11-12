@@ -10,10 +10,14 @@
 
 /* Match the supplied Threads Studio reference at desktop scale. */
 .topbar{padding-inline:40px;gap:26px}
+.topbar{position:sticky;top:0;z-index:30}
 .brand-lockup{font-size:25px;letter-spacing:-.45px;gap:12px}
 .top-nav{gap:13px}
 .threads-chip{height:51px;padding:8px 23px;font-size:17px;gap:11px}
 .reference-top{height:42px;padding:6px 17px;font-size:14px}
+.product-top{height:42px;padding:6px 16px;border:1px solid #e6e1ef;border-radius:99px;background:#fff;color:#55417e;font-size:14px;font-weight:600;white-space:nowrap}
+.product-top[aria-current="step"]{border-color:#d9ccff;background:#f6f2ff;color:#5636ca}
+.edit-top[aria-current="step"]{box-shadow:0 4px 16px #7047ec3a}
 .edit-top{height:55px;padding:9px 26px;font-size:19px}
 .analysis-top{height:52px;padding:8px 22px;font-size:17px}
 .top-actions{gap:12px}
@@ -25,8 +29,8 @@
 .direction-card{padding-bottom:11px}
 .phone-shell{height:min(calc(100vh - 160px),790px)}
 .more-tools-menu #productImportOpen{height:auto;padding:8px 10px;border:0;border-radius:9px;background:#fff;text-align:left;font-size:11px;color:var(--ink)}
-@media(max-width:1020px){.topbar{padding:10px 16px;gap:8px}.brand-lockup{font-size:17px;letter-spacing:0;gap:6px}.threads-chip{height:34px;padding:5px 9px;font-size:11px;gap:6px}.reference-top{height:32px;padding:4px 8px;font-size:9px}.edit-top{height:36px;padding:5px 9px;font-size:10px}.analysis-top{height:34px;padding:5px 8px;font-size:10px}.saved-indicator{padding:9px 14px;font-size:12px}.workbench{margin-top:15px}.mode-switch{margin-top:14px}.mode-switch button{height:52px}.setting-row{margin-top:12px}.direction-card{padding-bottom:14px}.phone-shell{height:540px}}
-@media(max-width:700px){.topbar{padding:8px 11px;gap:8px}.brand-lockup{font-size:14px;gap:6px}.threads-chip{height:34px;font-size:11px;padding:5px 9px}.reference-top{height:32px;font-size:9px;padding:4px 8px}.edit-top{height:36px;font-size:10px;padding:5px 9px}.analysis-top{height:34px;font-size:10px;padding:5px 8px}.top-actions{display:none}.workbench{margin-top:10px}.mode-switch{margin-top:11px}.mode-switch button{height:42px;font-size:12px}.setting-row{margin-top:9px}.direction-card{padding-bottom:12px}.phone-shell{height:540px}}
+@media(max-width:1020px){.topbar{padding:10px 16px;gap:8px}.brand-lockup{font-size:17px;letter-spacing:0;gap:6px}.threads-chip{height:34px;padding:5px 9px;font-size:11px;gap:6px}.reference-top{height:32px;padding:4px 8px;font-size:9px}.product-top{height:34px;padding:5px 10px;font-size:10px}.edit-top{height:36px;padding:5px 9px;font-size:10px}.analysis-top{height:34px;padding:5px 8px;font-size:10px}.saved-indicator{padding:9px 14px;font-size:12px}.workbench{margin-top:15px}.mode-switch{margin-top:14px}.mode-switch button{height:52px}.setting-row{margin-top:12px}.direction-card{padding-bottom:14px}.phone-shell{height:540px}}
+@media(max-width:700px){.topbar{padding:8px 11px;gap:8px}.brand-lockup{font-size:14px;gap:6px}.threads-chip{height:34px;font-size:11px;padding:5px 9px}.reference-top{height:32px;font-size:9px;padding:4px 8px}.product-top{height:32px;padding:4px 8px;font-size:9px}.edit-top{height:36px;font-size:10px;padding:5px 9px}.analysis-top{height:34px;font-size:10px;padding:5px 8px}.top-actions{display:none}.workbench{margin-top:10px}.mode-switch{margin-top:11px}.mode-switch button{height:42px;font-size:12px}.setting-row{margin-top:9px}.direction-card{padding-bottom:12px}.phone-shell{height:540px}}
 .inline-product-card .photo-section{margin-top:7px}
 .inline-product-card .photo-section>summary{width:100%;justify-content:center;padding:7px 5px;border:1px solid #ded4fa;border-radius:10px;background:#faf8ff;color:#6143ce;font-size:10px;font-weight:700}
 .inline-product-card .photo-downloads{grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
@@ -37,6 +41,7 @@
 .inline-product-card .photo-status,.inline-product-card .photo-section>.help{font-size:9px;line-height:1.5}
 #copyStatus:empty{display:none}
 .status-line{font-size:10px;line-height:1.35;margin-top:3px}
+#writingTitle{scroll-margin-top:120px}
 #modeHint{display:none}
 .postidentity{display:none}
 .posttext{min-height:205px}
