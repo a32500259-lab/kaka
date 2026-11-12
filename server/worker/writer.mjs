@@ -70,6 +70,24 @@ function requestInput(input,evidence){
  return {options,product:{name:evidence.name,description:evidence.description,detailText:evidence.detailText,productFacts:evidence.productFacts,source:evidence.source},note:'manualNotes는 사용자가 보완한 자료다. 이미지와 충돌하면 단정하지 않는다. 상품 사진은 부분 구간이며 안 보이는 내용을 추정하지 않는다.'};
 }
 export function hasCannedEnding(text){return /(?:눈이 가|질 듯|달라져|지거든|돼|줄어들어|있어|있지|라니|생각남|지네|달라져|지거든|재밌어질지도|딱\s*좋아|딱이야|딱이다|좋겠어)[.!?…~\s\p{Extended_Pictographic}\uFE0F]*$/u.test(String(text).trim())}
+function referenceRhythm(reference){
+ if(!reference)return null;
+ const exclamation=reference.match(/!{2,4}/)?.[0]||'';
+ const question=reference.match(/\?{2,4}(?:[ \t]+\?{2,4})?/)?.[0]||'';
+ const pause=reference.match(/\.{3,4}|…+/)?.[0]||'';
+ return {exclamation,question,pause,blankLine:/\n[ \t]*\n/.test(reference)};
+}
+function applyReferenceRhythm(opening,rhythm){
+ if(!rhythm)return opening.join('\n');
+ if(rhythm.exclamation&&!opening.join('\n').includes(rhythm.exclamation)){
+  opening[0]=opening[0].replace(/[!?]+(?=\s|$)/u,rhythm.exclamation);
+  if(!opening[0].includes(rhythm.exclamation))opening[0]=opening[0].replace(/[.!?]+$/u,'')+rhythm.exclamation;
+ }
+ if(rhythm.question&&!opening.join('\n').includes(rhythm.question)&&/\?(?=\s|$)/u.test(opening[2])){
+  opening[2]=opening[2].replace(/\?+(?:[ \t]+\?+)*(?=\s|$)/u,rhythm.question);
+ }
+ return opening.join(rhythm.blankLine?'\n\n':'\n');
+}
 export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  if(!env.GEMINI_API_KEY||env.GEMINI_FREE_TIER_CONFIRMED!=='true')throw new WriterError('Gemini 무료 등급 연결이 필요합니다.',503,'AI_NOT_CONFIGURED');
  const visuals=imageParts(input,evidence);
@@ -79,15 +97,14 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  const minimum=Math.round(targetLength*.9);
  const maximum=Math.round(targetLength*1.1);
  const requestData=requestInput(input,evidence);
+ const rhythm=referenceRhythm(requestData.options.referenceThreads[0]);
+ if(rhythm)requestData.options.referenceRhythm=rhythm;
  const lengthInstruction=`각 초안의 hook, explanation, empathy를 첫 세 줄로 조립한다. 각 필드는 한 줄씩 쓴다. 필요하면 continuation에 이어 쓸 문단을 넣는다. 본문 합계는 공백 포함, 줄바꿈과 링크 제외 ${minimum}~${maximum}자다. 위 허용 목록에서 내용에 맞는 이모지 2~3개를 고르고, 목록 밖 이모지나 복합 이모지 조합은 절대 쓰지 않는다. 가격 제외, 허위 체험 금지를 유지한다. 생활 공감은 해당 생활 상황, 고르는 기준은 실제 선택 기준을 둘째 줄에 설명한다.`;
  const referenceInstruction=requestData.options.referenceThreads.length
-  ? '선택한 referenceThreads는 문장 전개를 보여주는 예시다. 먼저 첫 문장이 어떻게 말을 걸고, 다음 문장이 무엇을 밝혀 주고, 끝에서 어떻게 독자의 경험으로 연결하는지 파악한다. 세 초안에서 후킹 → 설명 → 공감 순서는 지키면서, 그 예시의 눈에 띄는 전개 방식 하나 이상을 현재 상품의 확인된 특징과 선물 상황으로 다시 구현한다. 예를 들어 발견을 들려주고, 반전이나 짧은 감상을 덧붙인 뒤, 비슷한 고민이 있는지 묻는 글이라면 새 글에도 그 흐름이 보여야 한다. 느낌표나 이모지만 붙이는 것은 전개 반영으로 보지 않는다. 설명 줄에는 사용 권유 대신 확인된 제품 특징이나 선택 기준을 넣는다. 계정명, 시간, 반응 숫자, 맞팔 유도, 원문의 상품 및 수익 이야기, 경험과 문장은 가져오지 않는다. referenceStyle에 어떤 전개를 적용했는지 적고, referenceProof에 이를 보여 주는 추천 초안의 실제 한 줄을 그대로 반환한다.'
+  ? '선택한 referenceThreads는 문장 전개를 보여주는 예시다. 먼저 첫 문장이 어떻게 말을 걸고, 다음 문장이 무엇을 밝혀 주고, 끝에서 어떻게 독자의 경험으로 연결하는지 파악한다. 세 초안에서 후킹 → 설명 → 공감 순서는 지키면서, 그 예시의 눈에 띄는 전개 방식 하나 이상을 현재 상품의 확인된 특징과 선물 상황으로 다시 구현한다. 예를 들어 발견을 들려주고, 반전이나 짧은 감상을 덧붙인 뒤, 비슷한 고민이 있는지 묻는 글이라면 새 글에도 그 흐름이 보여야 한다. 느낌표나 이모지만 붙이는 것은 전개 반영으로 보지 않는다. 설명 줄에는 사용 권유 대신 확인된 제품 특징이나 선택 기준을 넣는다. 계정명, 시간, 반응 숫자, 맞팔 유도, 원문의 상품 및 수익 이야기, 경험과 문장은 가져오지 않는다.'
   : '';
  const responseSchema=structuredClone(schema);responseSchema.properties.photoNotes.description='상품 메인 사진을 실제로 본 결과. 전달된 사진마다 눈에 보이는 색·형태·구성 중 확인 가능한 특징 하나를 간결하게 적는다.';
  if(referenceInstruction){
-  responseSchema.properties.referenceStyle={type:'STRING',description:'추천 글에 반영한 참고 글의 전개 방식'};
-  responseSchema.properties.referenceProof={type:'STRING',description:'반영한 전개가 드러나는 추천 초안의 실제 한 줄. 초안에서 그대로 가져온다.'};
-  responseSchema.required.push('referenceStyle','referenceProof');
   requestData.options.recentDrafts=[];
  }
  for(const kind of ['recommend','conversation','guide']){
@@ -105,7 +122,8 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  const stylePriority=referenceInstruction
   ? '참고 문체 목표 95/100. 여러 참고 글이 있으면 첫 글을 주 기준으로 삼는다. 글을 쓰기 전에 원문의 말 높임, 문장 길이 대비, 짧게 끊는 위치, 빈 줄 간격, 반문·감탄, 문장부호의 종류와 반복 횟수(!, ?, ..., 쉼표 등), 부호 앞뒤 공백, 이모지의 개수와 위치를 살핀다. 눈에 띄는 특징을 설명에만 쓰지 말고 새 본문의 실제 문장에 재현한다. 원문에 !!! 또는 ?? ???가 두드러지면 새 글의 어울리는 위치에도 같은 리듬을 만든다. 이모지의 종류는 참고 글에서 가져오지 않는다. 새 글의 상품과 감정에 어울리는 이모지를 허용 목록에서 독립적으로 고르고, 원문에서는 배치와 빈도만 참고한다. 참고 글이 있을 때 이 문체 규칙이 일반 예시와 부호·이모지 기본값에 우선한다. 후킹·설명·공감의 순서와 확인된 상품 사실은 유지하고, 원문의 문장·계정명·개인 경험·홍보 내용은 옮기지 않는다.'
   : '';
- const body={systemInstruction:{parts:[{text:[contract,runtimePrompt,lengthInstruction,referenceInstruction,stylePriority].filter(Boolean).join('\n')}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestData)},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema}};
+ const rhythmInstruction=rhythm?'options.referenceRhythm의 값이 비어 있지 않으면 후킹에 pause와 exclamation을 실제로 넣고, 공감은 상품과 관련된 자연스러운 반문으로 끝내며 question을 그대로 붙인다. 첫 줄은 설명형 상품명 소개 대신 원문처럼 짧은 감정 반응과 반전으로 시작한다. 이 규칙은 기존 문장부호 예시보다 우선한다. 이모지는 새 상품과 상황에 맞게 선택한다.':'';
+ const body={systemInstruction:{parts:[{text:[contract,runtimePrompt,lengthInstruction,referenceInstruction,stylePriority,rhythmInstruction].filter(Boolean).join('\n')}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestData)},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema}};
  let response;
   try{response=await fetcher('https://generativelanguage.googleapis.com/v1beta/models/'+GEMINI_MODEL+':generateContent',{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify(body),signal:AbortSignal.timeout(65000)})}catch(error){throw new WriterError(error.name==='TimeoutError'?'Gemini 응답이 늦습니다. 잠시 후 다시 시도해주세요.':'Gemini에 연결하지 못했습니다. 잠시 후 다시 시도해주세요.',504,'AI_TIMEOUT')}
  let result;try{result=await response.json()}catch{throw new WriterError('Gemini 응답을 읽지 못했습니다.',502,'AI_INVALID_RESPONSE')}
@@ -122,7 +140,7 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
   const draft=data[kind];
   const opening=['hook','explanation','empathy'].map(key=>sanitizeThreadsEmoji(cleanModelPost(draft?.[key])).replace(/\s*\r?\n\s*/g,' '));
   if(opening.some(line=>!line))throw new WriterError('후킹·설명·공감 중 빠진 줄이 있어요.',502,'AI_VALIDATION_FAILED');
-  data[kind]=[opening.join('\n'),sanitizeThreadsEmoji(cleanModelPost(draft?.continuation))].filter(Boolean).join('\n\n');
+  data[kind]=[applyReferenceRhythm(opening,rhythm),sanitizeThreadsEmoji(cleanModelPost(draft?.continuation))].filter(Boolean).join('\n\n');
  }
  const visualSourceCount=new Set(input.visuals.map(image=>image.source)).size;
  if(!Array.isArray(data.photoNotes)||data.photoNotes.filter(note=>typeof note==='string'&&note.trim()).length<visualSourceCount)throw new WriterError('상품 메인 사진의 시각적 특징을 확인하지 못해 글 생성을 보류했어요. 사진을 확인한 뒤 다시 시도해주세요.',502,'AI_IMAGE_REVIEW_FAILED');
@@ -135,9 +153,7 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
   }
  }
  posts.recommend+='\n\n카카오톡 선물하기 : '+evidence.link;
- const proof=sanitizeThreadsEmoji(cleanModelPost(data.referenceProof));
- const referenceStyle=referenceInstruction&&proof&&posts.recommend.split('\n').includes(proof)
-  ? cleanModelPost(data.referenceStyle).slice(0,160)+' · '+proof
-  : '';
+ const appliedMarks=rhythm?[rhythm.pause,rhythm.exclamation,rhythm.question].filter(mark=>mark&&posts.recommend.split('\n\n카카오톡')[0].includes(mark)):[];
+ const referenceStyle=appliedMarks.length?'본문에서 확인한 원문 부호 '+appliedMarks.join(' / '):'';
  return {posts,referenceStyle,rationale:data.audience+' · '+data.angle,evidence:data.evidence.slice(0,6),photoNotes:Array.isArray(data.photoNotes)?data.photoNotes.slice(0,4):[],provider:'Gemini',model:result.modelVersion||GEMINI_MODEL,generatedAt:new Date().toISOString(),targetLength,source:evidence.source,checkedAt:evidence.checkedAt,visualSegments:visuals.length/2};
 }
