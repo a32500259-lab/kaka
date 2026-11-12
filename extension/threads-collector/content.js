@@ -56,8 +56,24 @@
     return fallback;
   }
 
+  function cleanCollectedText(value) {
+   const lines=String(value||'').trim().split(/\r?\n/);
+   let end=lines.length;
+   let numbers=0;
+   let marker=false;
+   while(end>0){
+    const line=lines[end-1].trim();
+    if(/^(?:[\d,.]+\s*(?:만|천|[KM])?|\d+\s*\/\s*\d+)$/i.test(line)){numbers++;if(line.includes('/'))marker=true}
+    else if(line==='/'){marker=true}
+    else if(!line||/^(?:번역하기|AI 콘텐츠)$/.test(line)){}
+    else break;
+    end--;
+   }
+   return (numbers>=2||marker?lines.slice(0,end):lines).join('\n').trim();
+  }
+
   function readPost(card, url) {
-    const text = (card.innerText || '').replace(/\n{3,}/g, '\n\n').trim();
+    const text = cleanCollectedText(card.innerText).replace(/\n{3,}/g, '\n\n');
     if (text.length < 12 || text.length > 8000) return null;
     const controls = [...card.querySelectorAll('[aria-label],button,[role="button"]')]
       .map(button => `${button.getAttribute('aria-label') || ''} ${button.getAttribute('title') || ''} ${button.innerText || ''} ${button.textContent || ''}`.trim());

@@ -149,6 +149,21 @@ $('url').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preve
 for(const id of fields.filter(id=>id!=='url'&&id!=='photoCount'))$(id).addEventListener('input',()=>{if(current){current.dirty=true;$('copyBtn').disabled=true;$('save').disabled=true;$('status').textContent='입력이 바뀌었어요. 추천 글 만들기를 눌러 반영해주세요.'}});
 $('copyBtn').onclick=async()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}try{await navigator.clipboard.writeText(exportText());$('copyStatus').textContent=current.posts&&current.mode!=='recommend'?'복사 완료! 선택한 글만 스레드에 붙여넣으세요.':'복사 완료! 스레드에 붙여넣고 아래 사진을 따로 첨부해주세요.'}catch{$('copyText').focus();$('copyText').select();$('copyStatus').textContent='글을 선택했어요. Ctrl+C로 복사해주세요.'}};
  $('save').onclick=()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}const draft={...structuredClone(current),fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),date:new Date().toLocaleString('ko-KR')};try{const next=[draft,...drafts].slice(0,30);localStorage.setItem('gift-note-drafts-v2',JSON.stringify(next));drafts=next;$('status').textContent='수정한 글과 사진 구성을 이 브라우저에 저장했어요.'}catch{$('status').textContent='저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}};
+function cleanCollectedText(value) {
+ const lines=String(value||'').trim().split(/\r?\n/);
+ let end=lines.length;
+ let numbers=0;
+ let marker=false;
+ while(end>0){
+  const line=lines[end-1].trim();
+  if(/^(?:[\d,.]+\s*(?:만|천|[KM])?|\d+\s*\/\s*\d+)$/i.test(line)){numbers++;if(line.includes('/'))marker=true}
+  else if(line==='/'){marker=true}
+  else if(!line||/^(?:번역하기|AI 콘텐츠)$/.test(line)){}
+  else break;
+  end--;
+ }
+ return (numbers>=2||marker?lines.slice(0,end):lines).join('\n').trim();
+}
 function renderCollectedThreads(){
  const root=$('historylist');root.replaceChildren();$('count').textContent=String(collectedThreads.length);
  renderReferenceSelection();renderReferenceLibrary();
@@ -162,7 +177,7 @@ function renderCollectedThreads(){
   const author=document.createElement('strong');author.textContent=post.author||'Threads 게시물';
   const date=document.createElement('time');date.textContent=post.collectedAt?new Date(post.collectedAt).toLocaleString('ko-KR'):(post.date||'');
   head.append(author,date);
-  const text=document.createElement('p');text.className='collected-thread-text';text.textContent=post.text||'';
+  const text=document.createElement('p');text.className='collected-thread-text';text.textContent=cleanCollectedText(post.text);
   const foot=document.createElement('div');foot.className='collected-thread-foot';
   const metrics=document.createElement('span');metrics.textContent=[post.views!=null?`조회 ${post.views}`:'조회수 미표시',post.likes!=null?`좋아요 ${post.likes}`:'좋아요 미표시'].join(' · ');
   const actions=document.createElement('div');actions.className='collected-thread-actions';
@@ -184,7 +199,7 @@ function renderCollectedThreads(){
 }
 function selectedReferencePosts(){return collectedThreads.filter(post=>post.id&&selectedReferenceIds.has(post.id)).slice(0,3)}
 function referencePayload(){
- return selectedReferencePosts().filter(post=>typeof post.id==='string'&&String(post.text||'').trim()).map(post=>({text:String(post.text).slice(0,1600)}));
+ return selectedReferencePosts().filter(post=>typeof post.id==='string').map(post=>({text:cleanCollectedText(post.text).slice(0,1600)})).filter(post=>post.text);
 }
 $('collectionSearch').addEventListener('input',renderCollectedThreads);
 
@@ -232,7 +247,7 @@ function renderReferenceSelection(){
  const root=$('selectedReferences');if(!root)return;root.replaceChildren();
  const selected=selectedReferencePosts();$('referenceCount').textContent=`참고 글 ${selected.length}개`;syncGenerationContext();
  if(!selected.length){const empty=document.createElement('p');empty.className='reference-empty';empty.textContent='수집한 글을 불러오면\n여기에 원문이 보여요.';root.append(empty);return}
- for(const post of selected){const item=document.createElement('article');item.className='selected-reference';const head=document.createElement('div');head.className='selected-reference-head';const author=document.createElement('strong');author.textContent='@'+(post.author||'Threads 게시물').replace(/^@/,'');const date=document.createElement('span');date.textContent=post.date||'수집한 글';head.append(author,date);const copy=document.createElement('p');copy.textContent=String(post.text||'').slice(0,900)+(String(post.text||'').length>900?'…':'');const meta=document.createElement('div');meta.className='benchmark-metrics';meta.textContent=`♡ ${post.likes??'—'}　◯ ${post.replies??'—'}　⟳ ${post.reposts??'—'}`;const actions=document.createElement('div');actions.className='benchmark-actions';const original=document.createElement('a');try{const url=new URL(post.url);if(url.protocol==='https:'&&/(^|\.)threads\.com$/.test(url.hostname)){original.href=url.href;original.target='_blank';original.rel='noopener noreferrer';original.textContent='원문 열기 ↗'}}catch{}const remove=document.createElement('button');remove.type='button';remove.textContent='참고 해제';remove.addEventListener('click',()=>{selectedReferenceIds.delete(post.id);renderReferenceSelection();renderReferenceLibrary()});actions.append(original,remove);item.append(head,copy,meta,actions);root.append(item)}
+ for(const post of selected){const item=document.createElement('article');item.className='selected-reference';const head=document.createElement('div');head.className='selected-reference-head';const author=document.createElement('strong');author.textContent='@'+(post.author||'Threads 게시물').replace(/^@/,'');const date=document.createElement('span');date.textContent=post.date||'수집한 글';head.append(author,date);const copy=document.createElement('p');copy.textContent=cleanCollectedText(post.text);const meta=document.createElement('div');meta.className='benchmark-metrics';meta.textContent=`♡ ${post.likes??'—'}　◯ ${post.replies??'—'}　⟳ ${post.reposts??'—'}`;const actions=document.createElement('div');actions.className='benchmark-actions';const original=document.createElement('a');try{const url=new URL(post.url);if(url.protocol==='https:'&&/(^|\.)threads\.com$/.test(url.hostname)){original.href=url.href;original.target='_blank';original.rel='noopener noreferrer';original.textContent='원문 열기 ↗'}}catch{}const remove=document.createElement('button');remove.type='button';remove.textContent='참고 해제';remove.addEventListener('click',()=>{selectedReferenceIds.delete(post.id);renderReferenceSelection();renderReferenceLibrary()});actions.append(original,remove);item.append(head,copy,meta,actions);root.append(item)}
 }
 function renderReferenceLibrary(){
  const root=$('referenceLibraryList');if(!root)return;root.replaceChildren();
@@ -242,7 +257,7 @@ function renderReferenceLibrary(){
   const card=document.createElement('article');card.className='reference-library-item';
   const label=document.createElement('label');label.className='reference-choice';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=Boolean(post.id&&selectedReferenceIds.has(post.id));checkbox.disabled=!post.id;
   checkbox.addEventListener('change',()=>{if(checkbox.checked&&selectedReferenceIds.size>=3){checkbox.checked=false;$('referencePickerStatus').textContent='참고 글은 한 번에 최대 3개까지 선택할 수 있어요.';return}if(checkbox.checked)selectedReferenceIds.add(post.id);else selectedReferenceIds.delete(post.id);renderReferenceSelection()});
-  const body=document.createElement('span');body.className='reference-choice-copy';const author=document.createElement('strong');author.textContent=post.author||'Threads 게시물';const text=document.createElement('span');text.textContent=String(post.text||'').slice(0,400)+(String(post.text||'').length>400?'…':'');const metrics=document.createElement('small');metrics.textContent=`조회 ${post.views??'—'} · 좋아요 ${post.likes??'—'}`;body.append(author,text,metrics);label.append(checkbox,body);
+  const body=document.createElement('span');body.className='reference-choice-copy';const author=document.createElement('strong');author.textContent=post.author||'Threads 게시물';const text=document.createElement('span');text.textContent=cleanCollectedText(post.text);const metrics=document.createElement('small');metrics.textContent=`조회 ${post.views??'—'} · 좋아요 ${post.likes??'—'}`;body.append(author,text,metrics);label.append(checkbox,body);
   const remove=document.createElement('button');remove.type='button';remove.className='delete-collected-thread';remove.textContent='삭제';remove.disabled=!post.id;remove.addEventListener('click',()=>{if(post.id)deleteCollectedThread(post.id)});card.append(label,remove);root.append(card);
  }
 }

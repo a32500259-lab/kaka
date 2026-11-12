@@ -84,8 +84,13 @@ body{--studio-nav-width:196px;padding-left:var(--studio-nav-width);background:#f
 .collection-grid-scroll,#referenceLibraryList{overflow:auto}
 #historylist,#referenceLibraryList{display:grid;grid-template-columns:repeat(4,minmax(180px,1fr));gap:12px}
 #referencePickerDialog{width:min(1100px,calc(100vw - 24px));max-width:calc(100vw - 24px)}
-#referenceLibraryList .reference-library-item{min-width:0}
-#referenceLibraryList .reference-choice-copy{max-height:240px;overflow:auto}
+#referencePickerDialog{max-height:92dvh}
+#referenceLibraryList{max-height:72dvh;align-items:start}
+#referenceLibraryList .reference-library-item{min-width:0;display:grid;gap:12px;background:#fff}
+#referenceLibraryList .reference-choice-copy{max-height:none;overflow:visible}
+#referenceLibraryList .reference-choice-copy>span{font-size:13px;line-height:1.65}
+#referenceLibraryList .delete-collected-thread{justify-self:end}
+.selected-reference>p,.collected-thread-text{max-height:none;overflow:visible}
 .collected-thread-head,.collected-thread-foot,.collected-thread-actions{flex-wrap:wrap}
 .collected-thread-actions button{padding:4px 7px;font-size:11px}
 @media(max-width:1190px){
