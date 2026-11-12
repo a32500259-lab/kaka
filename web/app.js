@@ -115,7 +115,7 @@ async function generate(){
  if(!loadedProduct){$('status').textContent='상품을 다시 불러와주세요.';return}
  const controller=new AbortController();generationController=controller;generating=true;
  const input=Object.fromEntries(['facts','age','occasion','customOccasion','targetLength'].map(id=>[id,$(id).value]));const link=loadedUrl,serial=requestNumber;
- const previous=current;const button=$('generate');button.disabled=true;$('regenerate').disabled=true;button.textContent='Gemini가 작성 중…';$('generationContext').textContent='상품 정보와 선택한 참고 글을 확인하고 있어요.';$('status').textContent='Gemini 연결과 상품 사진을 확인하고 있어요…';$('post').setAttribute('aria-busy','true');
+ const previous=current;const button=$('generate');button.disabled=true;button.textContent='Gemini가 작성 중…';$('generationContext').textContent='상품 정보와 선택한 참고 글을 확인하고 있어요.';$('status').textContent='Gemini 연결과 상품 사진을 확인하고 있어요…';$('post').setAttribute('aria-busy','true');
  let timeout=setTimeout(()=>controller.abort('timeout'),150000);
  try{
   const status=await writerStatus(controller.signal);updateAiStatus(status);
@@ -136,7 +136,7 @@ async function generate(){
   if(error.code==='AUTH_REQUIRED')showConnection();
   $('status').textContent=error.name==='AbortError'?'작성이 중단됐어요. 다시 만들기를 눌러주세요.':error.message;
   if(previous&&current===previous)$('status').textContent+=' 기존 초안은 그대로 남아 있습니다.';
- }finally{clearTimeout(timeout);generating=false;generationController=null;button.disabled=loading;$('regenerate').disabled=false;button.textContent='✎ 내 글 바꾸기';$('post').removeAttribute('aria-busy');syncGenerationContext()}
+ }finally{clearTimeout(timeout);generating=false;generationController=null;button.disabled=loading;button.textContent='✎ 내 글 바꾸기';$('post').removeAttribute('aria-busy');syncGenerationContext()}
 }
 function updateAiStatus(status){$('aiConnectionState').textContent=!status.configured?'Gemini 설정 확인 필요':status.connected?'Gemini 무료 연결됨':'Gemini · 작업실 연결 필요';$('aiConnectionState').dataset.connected=String(status.configured&&status.connected)}
 function showConnection(){$('aiConnectionDialog').showModal();$('writerConnectionCode').focus()}

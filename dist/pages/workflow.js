@@ -1,4 +1,4 @@
-import {scenes} from './scene-options.js?v=87e78161f4b0db8f';
+import {scenes} from './scene-options.js?v=b8a7eb744b0a8ab0';
 const $=id=>document.getElementById(id);
 const occasion=$('occasion');occasion.replaceChildren();
 const automatic=document.createElement('option');automatic.value='auto';automatic.textContent='상품에 맞게, 매번 새롭게';occasion.append(automatic);
@@ -12,7 +12,7 @@ function togglePanel(panel){
  $('workbench').hidden=panel==='rules'||panel==='history';
  $('rulesPanel').hidden=panel!=='rules';
  $('history').hidden=panel!=='history';
- for(const id of ['productEditor','phoneText','phonePhotos','productImportOpen','analyzeDraft'])$(id).hidden=daily;
+ for(const id of ['productEditor','phoneText','phonePhotos','productImportOpen'])$(id).hidden=daily;
  for(const id of ['dailyEditor','dailyPhoneText'])$(id).hidden=!daily;
  for(const button of document.querySelectorAll('[data-studio]')){
   if(button.dataset.studio===panel)button.setAttribute('aria-current','page');
@@ -31,4 +31,3 @@ function syncProductTile(){const name=$('name').value.trim();$('summaryName').te
 window.addEventListener('product-loaded',()=>{$('productImportDialog').close();syncProductTile();$('productImportOpen').removeAttribute('aria-current');$('generate').setAttribute('aria-current','step');$('writingTitle').scrollIntoView({behavior:'smooth',block:'start'})});
 $('name').addEventListener('input',syncProductTile);$('facts').addEventListener('input',syncProductTile);$('images').addEventListener('input',syncProductTile);
 window.addEventListener('content-ready',()=>{syncProductTile();const preview=$('phoneText');if(preview)preview.textContent=$('copyText')?.value||'초안이 준비됐어요.'});
-$('analyzeDraft').addEventListener('click',()=>{const text=$('copyText')?.value?.trim();if(!text){$('status').textContent='먼저 글을 만들면 첫 줄의 후킹, 상품 설명, 공감 흐름을 확인할 수 있어요.';return}$('status').textContent=`초안 확인 · 첫 문장 ${text.split(/[.!?\n]/).filter(Boolean)[0]?.trim()||'확인 필요'} · 문단 ${text.split(/\n\s*\n/).filter(Boolean).length}개 · 선택한 문체와 줄바꿈을 편집기에서 확인하세요.`;$('writingTitle').scrollIntoView({behavior:'smooth',block:'center'})});
