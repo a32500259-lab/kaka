@@ -7,7 +7,7 @@ const link='https://gift-link.kakao.com/c/testCase?keep=original';
 const evidence={name:'밝기 조절 무드등',description:'조명',detailText:'밝기 조절',productFacts:[],images:[photo],detailImages:[],link,source:'https://gift.kakao.com/product/123',checkedAt:'2026-11-10'};
 const input={link,age:'30',occasion:'집들이',visuals:[{source:photo,dataUrl:'data:image/jpeg;base64,YWJj',label:'앞면'}]};
 const env={GEMINI_API_KEY:'test-only-key',GIFT_WRITER_TOKEN:'test-only-token',GEMINI_FREE_TIER_CONFIRMED:'true',WRITER_PROMPT:'저장된 실제 문체 지침'};
-const good={recommend:'집들이 선물로 조명을 고르면 방에 놓을 자리부터 떠올리게 돼.\n\n밝기를 조절할 수 있어서 침대 옆에 둘 걸 찾는 친구한테도 보여주고 싶어.',conversation:'집들이 선물을 같이 고르는 건 성의 없는 게 아니라 실패를 줄이는 방법 같아.\n\n깜짝 선물도 좋지만 진짜 필요한 걸 묻는 마음도 좋잖아.',guide:'조명을 선물한다면 침대 옆에 둘 건지 책상에서 쓸 건지 먼저 알아보는 편.\n\n둘 장소가 정해져야 크기랑 전원 위치도 생각하기 편하니까.',audience:'방을 꾸미는 30대 친구',angle:'둘 자리에 맞는 집들이 선물',evidence:['밝기 조절'],photoNotes:[]};
+const good={recommend:'집들이 선물로 조명을 고르면 방에 놓을 자리부터 떠올리게 돼.\n\n밝기를 조절할 수 있어서 침대 옆에 둘 걸 찾는 친구한테도 보여주고 싶어.',conversation:'집들이 선물을 같이 고르는 건 성의 없는 게 아니라 실패를 줄이는 방법 같아.\n\n깜짝 선물도 좋지만 진짜 필요한 걸 묻는 마음도 좋잖아.',guide:'조명을 선물한다면 침대 옆에 둘 건지 책상에서 쓸 건지 먼저 알아보는 편.\n\n둘 장소가 정해져야 크기랑 전원 위치도 생각하기 편하니까.',audience:'방을 꾸미는 30대 친구',angle:'둘 자리에 맞는 집들이 선물',evidence:['밝기 조절'],photoNotes:['사진에 보이는 조명 본체와 앞면 조절부']};
 function modelShape(data){const result={...data};for(const kind of ['recommend','conversation','guide'])if(typeof result[kind]==='string'){const text=result[kind].trim();const lines=text.split(/\n+/).flatMap(line=>line.split(/(?<=[.!?])\s+/)).map(line=>line.trim()).filter(line=>line&&!/^https?:\/\//i.test(line)&&!/^카카오톡\s*선물하기\s*:/i.test(line));while(lines.length<3)lines.push('선물 받을 사람의 취향도 함께 떠올려요.');result[kind]={hook:lines[0],explanation:lines[1],empathy:lines[2],continuation:lines.slice(3).join('\n')}}return result}
 const answer=data=>new Response(JSON.stringify({modelVersion:'gemini-test-version',candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(modelShape(data))}]}}]}),{headers:{'content-type':'application/json'}});
 test('real provider request carries prompt, visuals and selected audience; only app adds original link',async()=>{
@@ -15,6 +15,7 @@ test('real provider request carries prompt, visuals and selected audience; only 
  assert.ok(seen.url.endsWith('/'+GEMINI_MODEL+':generateContent'));
  assert.equal(seen.options.headers['x-goog-api-key'],env.GEMINI_API_KEY);assert.ok(!seen.options.body.includes(env.GEMINI_API_KEY));
  assert.match(seen.body.systemInstruction.parts[0].text,/저장된 실제 문체 지침/);
+ assert.match(seen.body.systemInstruction.parts[0].text,/상품 메인 사진.*직접 시각적으로 확인/);
  assert.equal(JSON.parse(seen.body.contents[0].parts[0].text).options.age,'30');
  assert.equal(seen.body.contents[0].parts[2].inlineData.mimeType,'image/jpeg');
  assert.ok(result.posts.recommend.endsWith('카카오톡 선물하기 : '+link));
@@ -35,6 +36,13 @@ test('no call without a confirmed free-tier configuration or valid source images
  await assert.rejects(generateGiftPosts(input,evidence,{...env,GEMINI_FREE_TIER_CONFIRMED:'false'},options),e=>e.code==='AI_NOT_CONFIGURED');
  await assert.rejects(generateGiftPosts({...input,visuals:[{source:'https://evil.test/img',dataUrl:'data:image/jpeg;base64,YWJj'}]},evidence,env,options),e=>e.code==='INVALID_IMAGE');
  await assert.rejects(generateGiftPosts({...input,visuals:[]},evidence,env,options),e=>e.code==='NO_IMAGES');assert.equal(calls,0);
+});
+test('photo reading evidence is required and detail-page-only images are rejected',async()=>{
+ let calls=0;
+ await assert.rejects(generateGiftPosts(input,evidence,env,{fetcher:async()=>{calls++;return answer({...good,photoNotes:[]})}}),e=>e.code==='AI_IMAGE_REVIEW_FAILED');
+ const detail='https://st.kakaocdn.net/product/gift/product/detail-only.jpg';
+ await assert.rejects(generateGiftPosts({...input,visuals:[{source:detail,dataUrl:'data:image/jpeg;base64,YWJj'}]},{...evidence,images:[],detailImages:[{url:detail}]},env,{fetcher:async()=>{calls++;return answer(good)}}),e=>e.code==='INVALID_IMAGE');
+ assert.equal(calls,1);
 });
 test('free quota is surfaced immediately with no paid fallback or automatic retry',async()=>{
  let calls=0;await assert.rejects(generateGiftPosts(input,evidence,env,{fetcher:async()=>{calls++;return new Response('{"error":{}}',{status:429})}}),e=>e.code==='FREE_QUOTA_EXCEEDED');assert.equal(calls,1);

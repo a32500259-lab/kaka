@@ -12,6 +12,9 @@ export function sanitizeThreadsEmoji(text){
  }).replace(/[\uFE0E\u200D\u20E3\p{Emoji_Modifier}\p{Regional_Indicator}]/gu,'').replace(/(?<!\p{Extended_Pictographic})\uFE0F/gu,'');
 }
 const contract=`
+## 절대 최우선: 전달된 상품 메인 사진을 직접 읽기
+전달된 상품 메인 사진을 한 장씩 직접 시각적으로 확인한 뒤에만 초안을 쓴다. 사진에서 실제로 확인되는 구성·색·형태를 살피고, 글에 쓸 수 있는 시각 특징을 photoNotes에 사진별로 기록한다. 사진에서 확인하지 못한 기능·효과는 추정하지 않는다. 앱에서 사진을 읽지 못한 경우 텍스트만으로 대신 생성하지 않으며, 사진 읽기에 실패하면 글 생성 요청 자체를 보내지 않는다.
+
 [절대 최우선 작성 구조 — 모든 생성 글에 반드시 적용]
 상품 추천, 생활 공감, 고르는 기준의 모든 글은 본문 첫 세 줄을 반드시 다음 순서로 쓴다.
 첫째 줄은 후킹: 상품이나 상황에서 발견한 구체적인 점으로 스크롤을 멈추게 한다.
@@ -48,7 +51,7 @@ export function cleanModelPost(text){
  return String(text||'').replace(/\[([^\]]*)\]\(https?:\/\/[^)]*\)/g,'$1').replace(/(?:https?:\/\/|www\.|gift-link\.kakao\.com\/)[^\s<>"'\])]+/g,'').replace(/카카오톡\s*선물하기\s*[:：]\s*/g,'').split('\n').filter(line=>!/^[\s\[\]()`]+$/.test(line)).join('\n').replace(/\n{3,}/g,'\n\n').trim();
 }
 function imageParts(input,evidence){
- const allowed=new Set([...evidence.images,...evidence.detailImages.map(x=>x.url)]);const out=[];
+ const allowed=new Set(evidence.images);const out=[];
  if(!Array.isArray(input.visuals))return out;
  if(input.visuals.length>6)throw new WriterError('읽을 사진은 최대 6개 구간까지입니다.',400,'TOO_MANY_IMAGES');
  for(const image of input.visuals){
@@ -80,7 +83,7 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
  const referenceInstruction=requestData.options.referenceThreads.length
   ? '선택한 referenceThreads는 문장 전개를 보여주는 예시다. 먼저 첫 문장이 어떻게 말을 걸고, 다음 문장이 무엇을 밝혀 주고, 끝에서 어떻게 독자의 경험으로 연결하는지 파악한다. 세 초안에서 후킹 → 설명 → 공감 순서는 지키면서, 그 예시의 눈에 띄는 전개 방식 하나 이상을 현재 상품의 확인된 특징과 선물 상황으로 다시 구현한다. 예를 들어 발견을 들려주고, 반전이나 짧은 감상을 덧붙인 뒤, 비슷한 고민이 있는지 묻는 글이라면 새 글에도 그 흐름이 보여야 한다. 느낌표나 이모지만 붙이는 것은 전개 반영으로 보지 않는다. 설명 줄에는 사용 권유 대신 확인된 제품 특징이나 선택 기준을 넣는다. 계정명, 시간, 반응 숫자, 맞팔 유도, 원문의 상품 및 수익 이야기, 경험과 문장은 가져오지 않는다. referenceStyle에 어떤 전개를 적용했는지 적고, referenceProof에 이를 보여 주는 추천 초안의 실제 한 줄을 그대로 반환한다.'
   : '';
- const responseSchema=structuredClone(schema);
+ const responseSchema=structuredClone(schema);responseSchema.properties.photoNotes.description='상품 메인 사진을 실제로 본 결과. 전달된 사진마다 눈에 보이는 색·형태·구성 중 확인 가능한 특징 하나를 간결하게 적는다.';
  if(referenceInstruction){
   responseSchema.properties.referenceStyle={type:'STRING',description:'추천 글에 반영한 참고 글의 전개 방식'};
   responseSchema.properties.referenceProof={type:'STRING',description:'반영한 전개가 드러나는 추천 초안의 실제 한 줄. 초안에서 그대로 가져온다.'};
@@ -121,6 +124,8 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
   if(opening.some(line=>!line))throw new WriterError('후킹·설명·공감 중 빠진 줄이 있어요.',502,'AI_VALIDATION_FAILED');
   data[kind]=[opening.join('\n'),sanitizeThreadsEmoji(cleanModelPost(draft?.continuation))].filter(Boolean).join('\n\n');
  }
+ const visualSourceCount=new Set(input.visuals.map(image=>image.source)).size;
+ if(!Array.isArray(data.photoNotes)||data.photoNotes.filter(note=>typeof note==='string'&&note.trim()).length<visualSourceCount)throw new WriterError('상품 메인 사진의 시각적 특징을 확인하지 못해 글 생성을 보류했어요. 사진을 확인한 뒤 다시 시도해주세요.',502,'AI_IMAGE_REVIEW_FAILED');
  const issues=validatePosts(data);
  if(issues.length)throw new WriterError('생성된 글을 확인한 결과 다시 작성이 필요합니다. '+issues[0],502,'AI_VALIDATION_FAILED');
  const posts=Object.fromEntries(['recommend','conversation','guide'].map(k=>[k,formatThreadsPost(data[k])]));

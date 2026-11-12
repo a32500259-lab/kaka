@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#faf9ff">
   <title>선물노트 · 스레드 스튜디오</title>
-  <link href="style.css?v=studio-20261112-4" rel="stylesheet">
+  <link href="style.css?v=studio-20261112-5" rel="stylesheet">
 </head>
 <body>
   <header class="topbar">
@@ -30,7 +30,7 @@
 
       <section class="editor-column">
         <section class="direction-card" aria-labelledby="directionTitle">
-          <div class="section-heading"><div><h2 id="directionTitle">이번 글의 방향</h2><p>어떤 관점으로 글을 작성할지 선택해 주세요.</p></div><button class="image-add" id="addImages" type="button" title="상품 원문에서 최대 세 장의 사진을 가져와 선택">▧ 이미지 추가 <span id="photoSelectionCount">0/3</span></button></div>
+          <div class="section-heading"><div><h2 id="directionTitle">이번 글의 방향</h2><p>어떤 관점으로 글을 작성할지 선택해 주세요.</p></div></div>
           <div class="mode-switch" aria-label="글 종류" role="group"><button aria-pressed="true" data-kind="recommend" type="button">♧　상품 추천</button><button aria-pressed="false" data-kind="conversation" type="button">☺　생활 공감</button></div>
           <div class="two setting-row"><div><label for="occasion">작성 상황(예시)</label><select id="occasion"><option value="auto">상품에 맞게, 매번 새롭게</option></select><p class="help" id="occasionHelp">선물 받을 사람과 고르는 이유를 자연스럽게 이어요.</p></div><div><label for="targetLength">글 길이</label><select id="targetLength" aria-describedby="targetLengthHelp"><option value="100">짧게 · 약 100자</option><option value="200">중간 · 약 200자</option><option value="300">길게 · 약 300자</option></select><p class="help" id="targetLengthHelp">공백 포함 · 링크 제외 · 선택한 길이 ±10% 내외</p></div></div>
           <div hidden id="customOccasionWrap"><label for="customOccasion">어떤 상황인가요?</label><input id="customOccasion" maxlength="140" placeholder="예: 첫 출근을 앞둔 동생에게"></div><input id="age" type="hidden" value="auto"><input id="audience" type="hidden"><input id="angle" type="hidden"><select id="photoCount" hidden aria-hidden="true"><option value="0">0장</option></select>
@@ -41,7 +41,7 @@
           <div class="postidentity"><span class="avatar">선</span><div><b>howabout.pick</b><small id="modeHint">상품을 고른 이유와 링크 · 제품 사진 함께 첨부</small></div><span>···</span></div>
           <div class="generation-controls"><button class="edit-top" id="generate" type="button">✎ 내 글 바꾸기</button><span id="generationContext" class="generation-context" aria-live="polite"></span></div>
           <p id="status" class="status-line" role="status" aria-live="polite"></p>
-          <div class="post-edit-row"><div id="post"><textarea id="copyText" class="posttext" aria-label="스레드에 복사할 전체 글" placeholder="상품을 불러오고 글 만들기를 눌러주세요."></textarea></div><aside id="inlineProductCard" class="inline-product-card"><span class="product-tag">선물 아이템</span><div class="summary-image" id="summaryImage">＋</div><h3 id="summaryName">상품을 불러오면 여기에 보여요</h3><p id="summaryFacts">상품에서 확인한 정보를 바탕으로 글을 작성합니다.</p><a hidden id="summaryLink" rel="noopener noreferrer" target="_blank">상품 원문 ↗</a><details class="photo-section" id="photoSection"><summary id="photoSectionSummary">선택한 사진 저장</summary><div id="photoDownloads" class="photo-downloads"></div><p class="help" id="photoStatus" role="status">이미지 추가를 눌러 원문 사진을 최대 3장 불러오세요.</p></details></aside></div>
+          <div class="post-edit-row"><div id="post"><textarea id="copyText" class="posttext" aria-label="스레드에 복사할 전체 글" placeholder="상품을 불러오고 글 만들기를 눌러주세요."></textarea></div><aside id="inlineProductCard" class="inline-product-card"><div class="product-media-heading"><span class="product-tag">선물 아이템</span><button class="image-add" id="addImages" type="button" title="상품 메인 사진 최대 세 장을 미리 보고 선택">▧ 사진 선택 <span id="photoSelectionCount">0/3</span></button></div><div class="summary-image" id="summaryImage">＋</div><h3 id="summaryName">상품을 불러오면 여기에 보여요</h3><p id="summaryFacts">상품에서 확인한 정보를 바탕으로 글을 작성합니다.</p><a hidden id="summaryLink" rel="noopener noreferrer" target="_blank">상품 원문 ↗</a><details class="photo-section" id="photoSection"><summary id="photoSectionSummary">선택한 사진 저장</summary><div id="photoDownloads" class="photo-downloads"></div><p class="help" id="photoStatus" role="status">상품 메인 사진을 읽고 초안을 작성합니다. 사진은 최대 3장까지 선택할 수 있어요.</p></details></aside></div>
           <div class="rationale" id="rationale" hidden>상품과 참고 글을 불러오면 작성 준비가 돼요.</div>
           <div class="product-link-row" hidden><a id="productLink" rel="noopener noreferrer" target="_blank"></a><span id="lengthHelp" class="help"></span><a id="sourcePhoto" hidden></a><span id="selectedPhotoLabel">선택 전</span></div>
           <div class="editor-actions"><button class="outline-button" id="regenerate" type="button">⟳ 다른 관점으로 다시 쓰기</button><span class="action-spacer"></span><button id="copyBtn" type="button">글 복사</button><button class="save-button" id="save" type="button">초안 저장</button></div>
@@ -63,7 +63,7 @@
   <dialog id="photoPickerDialog" class="picker-dialog photo-picker-dialog"><section><div class="dialog-heading"><div><h2>상품 메인 사진 고르기</h2><p class="help">상품 페이지 대표 사진과 메인 사진 중 1~3장을 선택할 수 있어요.</p></div><button id="closePhotoPicker" type="button">닫기</button></div><p id="photoPickerStatus" class="help" role="status"></p><div id="photoChoiceList" class="photo-choice-list"></div><p class="photo-rights-note">사진은 후보 추출용입니다. 외부 재게시 범위는 판매자·브랜드 안내를 확인한 뒤 사용해주세요.</p><div class="dialog-actions"><button id="clearPhotoSelection" type="button">선택 해제</button><button id="applyPhotoSelection" type="button" class="primary">선택한 사진 추가</button></div></section></dialog>
   <dialog id="aiConnectionDialog"><form id="aiConnectionForm"><div class="dialog-heading"><div><h2>내 작업실 연결</h2><p class="help">Gemini 무료 연결을 확인해요.</p></div></div><label for="writerConnectionCode">작업실 연결 코드</label><input id="writerConnectionCode" type="password" autocomplete="off" required><label class="remember-connection"><input id="rememberWriterConnection" type="checkbox"> 이 브라우저에 연결 유지</label><p class="help">API 키는 서버 비밀 설정에서만 사용합니다.</p><p id="aiConnectionMessage" role="status"></p><div class="dialog-actions"><button id="aiConnectionClose" type="button">닫기</button><button type="submit" class="primary">연결 확인</button></div></form></dialog>
 
-  <script src="app.js?v=studio-20261112-4" type="module"></script>
-  <script src="workflow.js?v=studio-20261112-4" type="module"></script>
+  <script src="app.js?v=studio-20261112-5" type="module"></script>
+  <script src="workflow.js?v=studio-20261112-5" type="module"></script>
 </body>
 </html>
