@@ -1,5 +1,5 @@
-import {giftNarrative} from './gift-narrative.js?v=human7';
-import {livingProfile} from './lifestyle.js';
+import {giftNarrative} from './gift-narrative.js?v=b335088aa9282359';
+import {livingProfile} from './lifestyle.js?v=b335088aa9282359';
 
 // Original writing material. Never copies captions or invents use/purchase history.
 export const scenes=[
