@@ -205,7 +205,7 @@ function renderCollectedThreads(){
   card.append(head,text,foot);root.append(card);
  }
 }
-function selectedReferencePosts(){return collectedThreads.filter(post=>post.id&&selectedReferenceIds.has(post.id)).slice(0,3)}
+function selectedReferencePosts(){return [...selectedReferenceIds].map(id=>collectedThreads.find(post=>post.id===id)).filter(post=>post&&typeof post.text==='string'&&post.text.trim()).slice(0,3)}
 function referencePayload(){
  return selectedReferencePosts().filter(post=>typeof post.id==='string').map(post=>({text:cleanCollectedText(post.text).slice(0,1600)})).filter(post=>post.text);
 }
@@ -235,11 +235,11 @@ $('dailyGenerate').addEventListener('click',async()=>{
  const button=$('dailyGenerate');
  const referenceThreads=referencePayload();
  button.disabled=dailySource.readOnly=dailyOutput.readOnly=dailyLength.disabled=true;
- dailyStatus.textContent='Gemini가 일상글을 쓰고 있어요.';
+  dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 말투·문단 흐름 1순위로 보내고 있어요.`:'선택한 참고글이 없어요. 입력한 이야기를 바탕으로 작성하고 있어요.';
  try{
   dailyOutput.value=await requestDailyPost({source,targetLength:Number(dailyLength.value),referenceThreads},AbortSignal.timeout(75000));
   updateDailyPreview();
-  dailyStatus.textContent=referenceThreads.length?'선택한 벤치마킹 원문을 참고해 작성했어요.':'입력한 내용을 바탕으로 작성했어요.';
+   dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 1순위 말투 기준으로 요청해 작성했어요.`:'입력한 내용을 바탕으로 작성했어요.';
  }catch(error){
   dailyStatus.textContent=error.message;
   if(error.code==='AUTH_REQUIRED')showConnection();
