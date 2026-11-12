@@ -1,6 +1,6 @@
-import {sceneFor} from './scene-options.js?v=f76c140531aa3a52';
-import {requestDailyPost} from './ai-client.js?v=f76c140531aa3a52';
-import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=f76c140531aa3a52';
+import {sceneFor} from './scene-options.js?v=2b34a86c4ace1df6';
+import {requestDailyPost} from './ai-client.js?v=2b34a86c4ace1df6';
+import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=2b34a86c4ace1df6';
 const postForMode=current=>current?.posts?current.posts[current.mode||'recommend']||'':current?.postText??[...(current?.sections||[]),current?.link].filter(Boolean).join('\n\n');
 const $=id=>document.getElementById(id);
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
@@ -8,6 +8,14 @@ const fields=['url','name','category','price','facts','images','age','occasion',
 let loadedUrl='',current=null,drafts=[],loadedProduct=null,generating=false,generationController=null;const recentDrafts=[];let collectedThreads=[];const selectedReferenceIds=new Set();let photoCandidates=[],selectedPhotoSources=new Set();
 try{drafts=JSON.parse(localStorage.getItem('gift-note-drafts-v2')||'[]');if(!Array.isArray(drafts))drafts=[]}catch{}
 $('count').textContent='0';
+let cloudApi=null,cloudFailure='',remoteThreads=[],extensionThreadsReady=false;const pendingThreadDeletes=new Map();
+const cloudApiReady=import('./firebase-store.js?v=2b34a86c4ace1df6').then(async api=>{await api.initializeCloud();cloudApi=api;$('cloudStatus').textContent='☁ 클라우드 저장 연결됨';$('cloudStatus').title='이 브라우저의 익명 Firebase 계정에 저장합니다. 다른 기기 공유는 로그인 연결 후 사용할 수 있어요.';return api}).catch(error=>{cloudFailure=error?.message||'연결할 수 없습니다';$('cloudStatus').textContent='☁ 브라우저 저장만 사용 중';$('cloudStatus').title='Firebase 연결 실패: '+cloudFailure;return null});
+function cloudIdFor(kind,item){if(item?.id&&kind==='collectedThreads')return String(item.id);if(item?.cloudId)return String(item.cloudId);const signature=kind==='dailyDrafts'?`${item?.date||''}|${item?.output||''}|${item?.source||''}`:`${item?.date||''}|${item?.body||item?.postText||item?.posts?.recommend||''}|${item?.link||''}`;let hash=2166136261;for(const char of signature){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619)}return `${kind}-${(hash>>>0).toString(36)}`}
+function mergeCloudItems(kind,...groups){const seen=new Set(),merged=[];for(const group of groups)for(const raw of group||[]){if(!raw||typeof raw!=='object')continue;const item={...raw};if(kind!=='collectedThreads')item.cloudId=cloudIdFor(kind,item);const key=cloudIdFor(kind,item);if(seen.has(key))continue;seen.add(key);merged.push(item)}return merged}
+function storeLocalSnapshot(kind,items){if(kind==='productDrafts'){localStorage.setItem('gift-note-drafts-v2',JSON.stringify(items));drafts=items}else if(kind==='dailyDrafts'){localStorage.setItem(dailyArchiveKey,JSON.stringify(items));dailyDrafts=items}}
+async function writeCloudSnapshot(kind,items){const api=await cloudApiReady;if(!api)throw new Error(cloudFailure||'Firebase 연결을 사용할 수 없어요.');await api.writeSnapshot(kind,items)}
+async function hydrateCloud(){const api=await cloudApiReady;if(!api)return;try{const [remoteProducts,remoteDaily,threads]=await Promise.all([api.readSnapshot('productDrafts'),api.readSnapshot('dailyDrafts'),api.readSnapshot('collectedThreads')]);const mergedProducts=mergeCloudItems('productDrafts',drafts,remoteProducts),mergedDaily=mergeCloudItems('dailyDrafts',dailyDrafts,remoteDaily);drafts=mergedProducts;dailyDrafts=mergedDaily;storeLocalSnapshot('productDrafts',drafts);storeLocalSnapshot('dailyDrafts',dailyDrafts);remoteThreads=mergeCloudItems('collectedThreads',threads);collectedThreads=mergeCloudItems('collectedThreads',collectedThreads,remoteThreads);$('archiveCount').textContent='저장한 글 '+(archiveKind==='daily'?dailyDrafts:drafts).length+'개';if(!$('draftArchive').hidden)renderArchive();renderCollectedThreads();await Promise.all([api.writeSnapshot('productDrafts',drafts),api.writeSnapshot('dailyDrafts',dailyDrafts),...(remoteThreads.length?[api.writeSnapshot('collectedThreads',remoteThreads)]:[])]);$('cloudStatus').textContent='☁ 클라우드 저장 완료'}catch(error){cloudFailure=error?.message||'Firebase 저장 자료를 읽지 못했어요';$('cloudStatus').textContent='☁ 클라우드 동기화 오류';$('cloudStatus').title=cloudFailure}}
+function saveCollectedThreads(items,removedIds=[]){const current=remoteThreads.filter(item=>!removedIds.includes(item.id));collectedThreads=mergeCloudItems('collectedThreads',current,items);renderCollectedThreads();(async()=>{const api=await cloudApiReady;if(!api)throw new Error(cloudFailure||'Firebase 연결을 사용할 수 없어요.');const stored=await api.readSnapshot('collectedThreads');const filtered=stored.filter(item=>!removedIds.includes(item.id));remoteThreads=mergeCloudItems('collectedThreads',filtered,items);collectedThreads=remoteThreads;await api.writeSnapshot('collectedThreads',remoteThreads);renderCollectedThreads();$('collectionStatus').textContent='Chrome 확장프로그램과 Firebase에 저장됨';delete $('collectionStatus').dataset.error})().catch(error=>{$('collectionStatus').textContent='브라우저 수집목록은 갱신했지만 Firebase 저장에 실패했어요: '+error.message;$('collectionStatus').dataset.error='true'})}
 function validLink(raw){try{const u=new URL(raw);return u.protocol==='https:'&&u.hostname==='gift-link.kakao.com'&&!u.username&&!u.password&&/^\/c\/[a-zA-Z0-9]+\/?$/.test(u.pathname)}catch{return false}}
 function safeImage(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password}catch{return false}}
 function resize(t){t.style.height='auto';t.style.height=t.scrollHeight+4+'px'}
@@ -148,7 +156,7 @@ $('url').addEventListener('input',()=>{if(inputLink()!==loadedUrl){generationCon
 $('url').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();loadProduct().then(ok=>{if(ok)window.dispatchEvent(new Event('product-loaded'))})}});
 for(const id of fields.filter(id=>id!=='url'&&id!=='photoCount'))$(id).addEventListener('input',()=>{if(current){current.dirty=true;$('copyBtn').disabled=true;$('save').disabled=true;$('status').textContent='입력이 바뀌었어요. 추천 글 만들기를 눌러 반영해주세요.'}});
 $('copyBtn').onclick=async()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}try{await navigator.clipboard.writeText(exportText());$('copyStatus').textContent=current.posts&&current.mode!=='recommend'?'복사 완료! 선택한 글만 스레드에 붙여넣으세요.':'복사 완료! 스레드에 붙여넣고 아래 사진을 따로 첨부해주세요.'}catch{$('copyText').focus();$('copyText').select();$('copyStatus').textContent='글을 선택했어요. Ctrl+C로 복사해주세요.'}};
- $('save').onclick=()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}const draft={...structuredClone(current),body:exportText(),fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),date:new Date().toLocaleString('ko-KR')};try{const next=[draft,...drafts];localStorage.setItem('gift-note-drafts-v2',JSON.stringify(next));drafts=next;$('status').textContent='내 글 보관함에 상품 초안을 저장했어요.'}catch{$('status').textContent='저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}};
+ $('save').onclick=async()=>{if(!current){$('status').textContent='먼저 상품 글을 만들어주세요.';return}const draft={...structuredClone(current),body:exportText(),fields:Object.fromEntries(fields.map(id=>[id,$(id).value])),date:new Date().toLocaleString('ko-KR')};draft.cloudId=cloudIdFor('productDrafts',draft);try{const next=mergeCloudItems('productDrafts',[draft],drafts);storeLocalSnapshot('productDrafts',next);$('status').textContent='이 브라우저에 저장했어요. Firebase 클라우드에도 저장 중…';try{await writeCloudSnapshot('productDrafts',next);$('status').textContent='내 글 보관함과 Firebase 클라우드에 상품 초안을 저장했어요.';$('cloudStatus').textContent='☁ 클라우드 저장 완료'}catch(error){$('status').textContent='이 브라우저에는 저장했어요. Firebase 저장은 실패했어요: '+error.message;$('cloudStatus').textContent='☁ 클라우드 저장 오류';$('cloudStatus').title=error.message}if(!$('draftArchive').hidden)renderArchive()}catch{$('status').textContent='브라우저 저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}};
 function cleanCollectedText(value) {
  const lines=String(value||'').trim().split(/\r?\n/);
  let end=lines.length;
@@ -241,13 +249,14 @@ $('dailyCopy').addEventListener('click',async()=>{
  try{await navigator.clipboard.writeText(dailyOutput.value);dailyStatus.textContent='글을 복사했어요.'}
  catch{dailyOutput.focus();dailyOutput.select();dailyStatus.textContent='선택된 글을 Ctrl+C로 복사해주세요.'}
 });
-$('dailySave').addEventListener('click',()=>{
+$('dailySave').addEventListener('click',async()=>{
  try{
-  const draft={source:dailySource.value,output:dailyOutput.value,length:dailyLength.value,date:new Date().toLocaleString('ko-KR')};
-  const next=[draft,...dailyDrafts];
-  localStorage.setItem(dailyArchiveKey,JSON.stringify(next));
-  dailyDrafts=next;
-  dailyStatus.textContent='내 글 보관함에 일상글을 저장했어요.';
+  const draft={source:dailySource.value,output:dailyOutput.value,length:dailyLength.value,date:new Date().toLocaleString('ko-KR')};draft.cloudId=cloudIdFor('dailyDrafts',draft);
+  const next=mergeCloudItems('dailyDrafts',[draft],dailyDrafts);
+  storeLocalSnapshot('dailyDrafts',next);
+  dailyStatus.textContent='이 브라우저에 저장했어요. Firebase 클라우드에도 저장 중…';
+  try{await writeCloudSnapshot('dailyDrafts',next);dailyStatus.textContent='내 글 보관함과 Firebase 클라우드에 일상글을 저장했어요.';$('cloudStatus').textContent='☁ 클라우드 저장 완료'}catch(error){dailyStatus.textContent='이 브라우저에는 저장했어요. Firebase 저장은 실패했어요: '+error.message;$('cloudStatus').textContent='☁ 클라우드 저장 오류';$('cloudStatus').title=error.message}
+  if(!$('draftArchive').hidden)renderArchive();
  }catch{dailyStatus.textContent='저장 공간을 사용할 수 없어요. 글 복사를 이용해주세요.'}
 });
 function restoreArchiveDraft(kind,draft){
@@ -350,10 +359,29 @@ function renderReferenceLibrary(){
  }
 }
 function requestCollectedThreads(){const requestId=crypto.randomUUID();window.postMessage({source:'gift-note-site',type:'get-references',requestId},location.origin)}
-function deleteCollectedThread(id){if(!window.confirm('이 게시물을 수집목록에서 삭제할까요?'))return;const requestId=crypto.randomUUID();window.postMessage({source:'gift-note-site',type:'delete-reference',requestId,id},location.origin);$('collectionStatus').textContent='삭제 중…'}
-window.addEventListener('message',event=>{const data=event.data;if(event.source!==window||event.origin!==location.origin||data?.source!=='gift-note-extension')return;if(data.type==='references-error'){collectionStatus.textContent='확장프로그램 연결이 끊겼어요. 확장프로그램을 새로고침한 뒤 이 사이트 탭도 새로고침해주세요.';collectionStatus.dataset.error='true';if(referencePickerStatus)referencePickerStatus.textContent='Chrome 확장프로그램 연결을 다시 시작한 뒤 목록을 불러와주세요.';return}if(!Array.isArray(data.items))return;if(data.type==='delete-result'){$('collectionStatus').textContent=data.deleted?'게시물을 수집목록에서 삭제했어요.':'삭제하지 못했어요. 확장프로그램 연결을 확인해주세요.';if(!data.deleted)$('collectionStatus').dataset.error='true';else delete $('collectionStatus').dataset.error;collectedThreads=data.items;const validIds=new Set(data.items.map(post=>post.id));for(const id of selectedReferenceIds)if(!validIds.has(id))selectedReferenceIds.delete(id);renderCollectedThreads();return}if(!['references','references-updated'].includes(data.type))return;collectedThreads=data.items;const validIds=new Set(data.items.map(post=>post.id));for(const id of selectedReferenceIds)if(!validIds.has(id))selectedReferenceIds.delete(id);renderCollectedThreads();$('collectionStatus').textContent='확장프로그램 수집 내용과 동기화됨';delete $('collectionStatus').dataset.error;});
+function deleteCollectedThread(id){if(!window.confirm('이 게시물을 수집목록에서 삭제할까요?'))return;const requestId=crypto.randomUUID();pendingThreadDeletes.set(requestId,id);window.postMessage({source:'gift-note-site',type:'delete-reference',requestId,id},location.origin);$('collectionStatus').textContent='삭제 중…'}
+let lastExtensionThreadIds=null;
+window.addEventListener('message',event=>{
+ const data=event.data;
+ if(event.source!==window||event.origin!==location.origin||data?.source!=='gift-note-extension')return;
+ if(data.type==='references-error'){$('collectionStatus').textContent='확장프로그램 연결이 끊겼어요. 확장프로그램을 새로고침한 뒤 이 사이트 탭도 새로고침해주세요.';$('collectionStatus').dataset.error='true';if(referencePickerStatus)referencePickerStatus.textContent='Chrome 확장프로그램 연결을 다시 시작한 뒤 목록을 불러와주세요.';return}
+ if(!Array.isArray(data.items))return;
+ if(data.type==='delete-result'){
+  const deletedId=pendingThreadDeletes.get(data.requestId);pendingThreadDeletes.delete(data.requestId);
+  $('collectionStatus').textContent=data.deleted?'게시물을 수집목록에서 삭제했어요.':'삭제하지 못했어요. 확장프로그램 연결을 확인해주세요.';
+  if(!data.deleted)$('collectionStatus').dataset.error='true';else{delete $('collectionStatus').dataset.error;if(deletedId){lastExtensionThreadIds=new Set(data.items.map(post=>post.id));saveCollectedThreads(data.items,[deletedId])}}
+  if(!data.deleted){collectedThreads=mergeCloudItems('collectedThreads',remoteThreads,data.items);renderCollectedThreads()}
+  const validIds=new Set(data.items.map(post=>post.id));for(const id of selectedReferenceIds)if(!validIds.has(id))selectedReferenceIds.delete(id);return
+ }
+ if(!['references','references-updated'].includes(data.type))return;
+ const incomingIds=new Set(data.items.map(post=>post.id));const removed=data.type==='references-updated'&&lastExtensionThreadIds?[...lastExtensionThreadIds].filter(id=>!incomingIds.has(id)):[];
+ lastExtensionThreadIds=incomingIds;extensionThreadsReady=true;
+ const validIds=new Set(data.items.map(post=>post.id));for(const id of selectedReferenceIds)if(!validIds.has(id))selectedReferenceIds.delete(id);
+ saveCollectedThreads(data.items,removed);
+});
 window.addEventListener('gift-note-extension-ready',requestCollectedThreads);
 requestCollectedThreads();
+hydrateCloud();
  function openReferencePicker(){$('referencePickerDialog').showModal();renderReferenceLibrary()}
 $('openReferencePicker').onclick=openReferencePicker;$('openReferencePickerSide').onclick=openReferencePicker;$('openReferencePickerBottom').onclick=openReferencePicker;$('closeReferencePicker').onclick=()=>$('referencePickerDialog').close();$('applyReferenceSelection').onclick=()=>{$('referencePickerDialog').close();renderReferenceSelection();$('referencePickerStatus').textContent=`${selectedReferencePosts().length}개 글을 벤치마킹 원문에 불러왔어요.`};$('clearReferenceSelection').onclick=()=>{selectedReferenceIds.clear();renderReferenceSelection();renderReferenceLibrary()};
  $('applyInlinePhotos').onclick=applyInlinePhotoSelection;$('clearInlinePhotos').onclick=()=>{selectedPhotoSources.clear();if(current)current.photos=[];syncPhotoOptions();renderPhotoChoices();updatePhotoSelectionUi();if(current)render();$('photoStatus').textContent='사진 선택을 해제했어요.'};

@@ -16,7 +16,7 @@
       <button class="reference-top" id="openReferencePicker" type="button"><span id="referenceCount">참고 글 0개</span></button>
       <button class="product-top" id="productImportOpen" type="button" aria-current="step">＋ 상품 링크 가져오기</button>
     </nav>
-    <div class="top-actions"><details class="more-tools"><summary aria-label="더 보기">···</summary><div class="more-tools-menu"><button id="saved" type="button">수집한 스레드 <b id="count">0</b></button><button id="rulesNav" type="button">글쓰기 지침</button><span class="ai-status" id="aiConnectionState" role="status">Gemini 연결 확인 중…</span><button id="aiConnect" class="connect-button" type="button">작업실 연결</button></div></details><span class="saved-indicator">☁ 임시저장됨</span></div>
+    <div class="top-actions"><details class="more-tools"><summary aria-label="더 보기">···</summary><div class="more-tools-menu"><button id="saved" type="button">수집한 스레드 <b id="count">0</b></button><button id="rulesNav" type="button">글쓰기 지침</button><span class="ai-status" id="aiConnectionState" role="status">Gemini 연결 확인 중…</span><button id="aiConnect" class="connect-button" type="button">작업실 연결</button></div></details><span class="saved-indicator" id="cloudStatus" role="status" title="클라우드 저장 상태를 확인하고 있어요">☁ Firebase 연결 중…</span></div>
   </header>
 
   <main id="workspace">
@@ -85,7 +85,7 @@
       <p id="archiveStatus" class="status-line" role="status"></p>
       <div class="collection-grid-scroll"><div id="archiveList"></div></div>
     </section>
-    <footer><span>선물노트 · Threads Studio</span><span>수집한 스레드와 초안은 이 브라우저에 저장됩니다.</span></footer>
+    <footer><span>선물노트 · Threads Studio</span><span>초안과 수집글은 이 브라우저와 Firebase에 저장됩니다. 다른 기기 공유는 로그인 연결 후 사용할 수 있어요.</span></footer>
   </main>
 
   <dialog id="productImportDialog" class="picker-dialog product-import-dialog"><section><div class="dialog-heading"><div><h2>상품 링크 가져오기</h2><p class="help">카카오톡 선물하기 큐레이터 링크를 넣어 상품 정보와 원문 사진을 불러와요.</p></div><button id="closeProductImport" type="button">닫기</button></div><label class="sr-only" for="url">선물하기 큐레이터 링크</label><div class="import-controls"><textarea id="url" rows="1" placeholder="카카오톡 선물하기 큐레이터 링크 붙여넣기"></textarea><button id="load" type="button">상품 불러오기</button></div><p class="import-status" id="importStatus" role="status">큐레이터 링크를 붙여넣어 주세요.</p><details id="productDetails" class="product-details"><summary>상품 정보 확인 및 수정</summary><label for="name">상품명</label><input id="name" maxlength="150"><div class="two"><div><label for="category">상품 종류</label><select id="category"><option value="auto">상품명으로 분류</option><option value="beauty">뷰티 · 헤어</option><option value="food">디저트 · 식품</option><option value="home">리빙 · 생활</option><option value="tech">디지털 · 가전</option><option value="fashion">패션 · 소품</option><option value="general">기타</option></select></div><div><label for="price">가격 <small>참고용 · 글에는 제외</small></label><input id="price" maxlength="40" placeholder="상품 페이지 확인 정보"></div></div><label for="facts">추가 특징 <small>선택 · 한 줄에 하나씩</small></label><textarea id="facts" rows="3" placeholder="상품에서 확인한 특징"></textarea><label for="images">사진 주소 <small>수동 추가가 필요할 때</small></label><textarea id="images" rows="2" placeholder="https://…"></textarea></details></section></dialog>
@@ -93,7 +93,7 @@
   <dialog id="referencePickerDialog" class="picker-dialog"><section><div class="dialog-heading"><div><h2>수집한 스레드 불러오기</h2><p class="help">선택한 글의 말투와 문단 흐름을 새 글에 참고해요.</p></div><button id="closeReferencePicker" type="button">닫기</button></div><p id="referencePickerStatus" class="help" role="status"></p><div id="referenceLibraryList" class="reference-library-list"></div><div class="dialog-actions"><button id="clearReferenceSelection" type="button">선택 해제</button><button id="applyReferenceSelection" type="button" class="primary">선택한 글 불러오기</button></div></section></dialog>
   <dialog id="aiConnectionDialog"><form id="aiConnectionForm"><div class="dialog-heading"><div><h2>내 작업실 연결</h2><p class="help">Gemini 무료 연결을 확인해요.</p></div></div><label for="writerConnectionCode">작업실 연결 코드</label><input id="writerConnectionCode" type="password" autocomplete="off" required><label class="remember-connection"><input id="rememberWriterConnection" type="checkbox"> 이 브라우저에 연결 유지</label><p class="help">API 키는 서버 비밀 설정에서만 사용합니다.</p><p id="aiConnectionMessage" role="status"></p><div class="dialog-actions"><button id="aiConnectionClose" type="button">닫기</button><button type="submit" class="primary">연결 확인</button></div></form></dialog>
 
-  <script src="app.js?v=studio-20261112-9" type="module"></script>
-  <script src="workflow.js?v=studio-20261112-9" type="module"></script>
+  <script src="app.js?v=studio-20261112-10" type="module"></script>
+  <script src="workflow.js?v=studio-20261112-10" type="module"></script>
 </body>
 </html>

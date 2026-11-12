@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{userId}/workspace/{docId} {
+      allow read: if request.auth != null
+        && request.auth.uid == userId
+        && docId in ['productDrafts', 'dailyDrafts', 'collectedThreads'];
+      allow create, update: if request.auth != null
+        && request.auth.uid == userId
+        && docId in ['productDrafts', 'dailyDrafts', 'collectedThreads']
+        && request.resource.data.keys().hasOnly(['items', 'updatedAt'])
+        && request.resource.data.keys().hasAll(['items', 'updatedAt'])
+        && request.resource.data.items is list
+        && request.resource.data.items.size() <= 500
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if request.auth != null
+        && request.auth.uid == userId
+        && docId in ['productDrafts', 'dailyDrafts', 'collectedThreads'];
+    }
+  }
+}
