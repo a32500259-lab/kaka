@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "선물노트 스레드 수집기",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Threads 게시물을 직접 수집하고 선물노트 사이트의 수집 목록과 동기화합니다.",
   "permissions": ["activeTab", "scripting", "storage", "downloads"],
   "content_scripts": [{

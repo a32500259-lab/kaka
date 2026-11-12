@@ -125,13 +125,19 @@ function renderCollectedThreads(){
   const text=document.createElement('p');text.className='collected-thread-text';text.textContent=post.text||'';
   const foot=document.createElement('div');foot.className='collected-thread-foot';
   const metrics=document.createElement('span');metrics.textContent=[post.views!=null?`조회 ${post.views}`:'조회수 미표시',post.likes!=null?`좋아요 ${post.likes}`:'좋아요 미표시'].join(' · ');
-  foot.append(metrics);
+  const actions=document.createElement('div');actions.className='collected-thread-actions';
+  const remove=document.createElement('button');remove.type='button';remove.className='delete-collected-thread';remove.textContent='삭제';remove.disabled=!post.id;
+  remove.title=post.id?'이 수집 글을 삭제합니다':'확장프로그램을 새로고침해 다시 수집하면 삭제할 수 있습니다';
+  remove.addEventListener('click',()=>{if(post.id)deleteCollectedThread(post.id)});
+  actions.append(remove);
+  foot.append(metrics,actions);
   try{const u=new URL(post.url);if(u.protocol==='https:'&&/(^|\.)threads\.com$/.test(u.hostname)){const link=document.createElement('a');link.href=u.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent='원문 열기 ↗';foot.append(link)}}catch{}
   card.append(head,text,foot);root.append(card);
  }
 }
 function requestCollectedThreads(){const requestId=crypto.randomUUID();window.postMessage({source:'gift-note-site',type:'get-references',requestId},location.origin)}
-window.addEventListener('message',event=>{const data=event.data;if(event.source!==window||event.origin!==location.origin||data?.source!=='gift-note-extension'||!['references','references-updated'].includes(data.type)||!Array.isArray(data.items))return;collectedThreads=data.items;renderCollectedThreads();$('collectionStatus').textContent='확장프로그램 수집 내용과 동기화됨';});
+function deleteCollectedThread(id){if(!window.confirm('이 게시물을 수집목록에서 삭제할까요?'))return;const requestId=crypto.randomUUID();window.postMessage({source:'gift-note-site',type:'delete-reference',requestId,id},location.origin);$('collectionStatus').textContent='삭제 중…'}
+window.addEventListener('message',event=>{const data=event.data;if(event.source!==window||event.origin!==location.origin||data?.source!=='gift-note-extension'||!Array.isArray(data.items))return;if(data.type==='delete-result'){$('collectionStatus').textContent=data.deleted?'게시물을 수집목록에서 삭제했어요.':'삭제하지 못했어요. 확장프로그램 연결을 확인해주세요.';if(!data.deleted)$('collectionStatus').dataset.error='true';else delete $('collectionStatus').dataset.error;collectedThreads=data.items;renderCollectedThreads();return}if(!['references','references-updated'].includes(data.type))return;collectedThreads=data.items;renderCollectedThreads();$('collectionStatus').textContent='확장프로그램 수집 내용과 동기화됨';delete $('collectionStatus').dataset.error;});
 window.addEventListener('gift-note-extension-ready',requestCollectedThreads);
 requestCollectedThreads();
  $('saved').onclick=()=>{$('history').hidden=false;renderCollectedThreads();requestCollectedThreads();$('history').scrollIntoView({behavior:'smooth'})};$('closeHistory').onclick=()=>{$('history').hidden=true};$('occasion').addEventListener('change',syncOccasion);window.addEventListener('resize',()=>document.querySelectorAll('.posttext').forEach(resize));$('url').value='';clearResult('상품 링크를 넣어 시작해보세요.');

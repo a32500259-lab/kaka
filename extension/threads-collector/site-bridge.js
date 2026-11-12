@@ -15,8 +15,25 @@
 
   window.addEventListener('message', event => {
     const data = event.data;
-    if (event.source !== window || event.origin !== origin || data?.source !== 'gift-note-site' || data.type !== 'get-references') return;
-    publish('references', typeof data.requestId === 'string' ? data.requestId : '');
+    if (event.source !== window || event.origin !== origin || data?.source !== 'gift-note-site') return;
+    const requestId = typeof data.requestId === 'string' ? data.requestId : '';
+    if (data.type === 'get-references') {
+      publish('references', requestId);
+      return;
+    }
+    if (data.type !== 'delete-reference' || typeof data.id !== 'string' || data.id.length > 100) return;
+    chrome.storage.local.get(KEY).then(async result => {
+      const items = Array.isArray(result[KEY]) ? result[KEY] : [];
+      const filtered = items.filter(item => item?.id !== data.id);
+      if (filtered.length === items.length) {
+        window.postMessage({ source: 'gift-note-extension', type: 'delete-result', requestId, deleted: false, items }, origin);
+        return;
+      }
+      await chrome.storage.local.set({ [KEY]: filtered });
+      window.postMessage({ source: 'gift-note-extension', type: 'delete-result', requestId, deleted: true, items: filtered }, origin);
+    }).catch(() => {
+      window.postMessage({ source: 'gift-note-extension', type: 'delete-result', requestId, deleted: false, items: [] }, origin);
+    });
   });
 
   chrome.storage.onChanged.addListener((changes, area) => {
