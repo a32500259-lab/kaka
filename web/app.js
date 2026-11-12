@@ -132,7 +132,7 @@ async function generate(){
   const chosen=[...selectedPhotoSources];const mainPhotos=chosen.length?chosen:photoCandidates.map(photo=>photo.src).slice(0,3);if(!mainPhotos.length)throw new Error('상품 메인 사진이 없어 초안을 만들지 않았어요. 사진이 있는 상품을 불러와주세요.');const visualProduct={...loadedProduct,images:mainPhotos,detailImages:[]};const {visuals}=await prepareVisuals(visualProduct,controller.signal,message=>{$('status').textContent=message});
   $('status').textContent='Gemini가 상품 사진과 설명을 읽고, 글의 흐름을 다듬고 있어요…';
   const referenceThreads=referencePayload();
-  $('generationContext').textContent=`후킹 → 설명 → 공감 · 참고 글 ${referenceThreads.length}개 반영 · 가격 제외`;
+  $('generationContext').textContent=`참고 글 ${referenceThreads.length}개 · 후킹 → 설명 → 공감 · 가격 제외`;
   const result=await requestGiftPosts({...input,link,visuals,recentDrafts,referenceThreads},controller.signal);
   if(controller.signal.aborted||serial!==requestNumber||inputLink()!==link)return;
   if(['facts','age','occasion','customOccasion','targetLength'].some(id=>$(id).value!==input[id])){$('status').textContent='작성 중 선택이 바뀌었어요. 다시 만들기를 눌러주세요.';return}
@@ -235,11 +235,11 @@ $('dailyGenerate').addEventListener('click',async()=>{
  const button=$('dailyGenerate');
  const referenceThreads=referencePayload();
  button.disabled=dailySource.readOnly=dailyOutput.readOnly=dailyLength.disabled=true;
-  dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 말투·문단 흐름 1순위로 보내고 있어요.`:'선택한 참고글이 없어요. 입력한 이야기를 바탕으로 작성하고 있어요.';
+  dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 말투·글쓰기 0순위로 보내고 있어요.`:'선택한 참고글이 없어요. 입력한 이야기를 바탕으로 작성하고 있어요.';
  try{
   dailyOutput.value=await requestDailyPost({source,targetLength:Number(dailyLength.value),referenceThreads},AbortSignal.timeout(75000));
   updateDailyPreview();
-   dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 1순위 말투 기준으로 요청해 작성했어요.`:'입력한 내용을 바탕으로 작성했어요.';
+   dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 0순위 말투 기준으로 요청해 작성했어요.`:'입력한 내용을 바탕으로 작성했어요.';
  }catch(error){
   dailyStatus.textContent=error.message;
   if(error.code==='AUTH_REQUIRED')showConnection();
