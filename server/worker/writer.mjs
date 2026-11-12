@@ -120,7 +120,7 @@ export async function generateGiftPosts(input,evidence,env,{fetcher=fetch}={}){
   };
  }
  const stylePriority=referenceInstruction
-  ? '참고 문체 목표 95/100. 여러 참고 글이 있으면 첫 글을 주 기준으로 삼는다. 글을 쓰기 전에 원문의 말 높임, 문장 길이 대비, 짧게 끊는 위치, 빈 줄 간격, 반문·감탄, 문장부호의 종류와 반복 횟수(!, ?, ..., 쉼표 등), 부호 앞뒤 공백, 이모지의 개수와 위치를 살핀다. 눈에 띄는 특징을 설명에만 쓰지 말고 새 본문의 실제 문장에 재현한다. 원문에 !!! 또는 ?? ???가 두드러지면 새 글의 어울리는 위치에도 같은 리듬을 만든다. 이모지의 종류는 참고 글에서 가져오지 않는다. 새 글의 상품과 감정에 어울리는 이모지를 허용 목록에서 독립적으로 고르고, 원문에서는 배치와 빈도만 참고한다. 참고 글이 있을 때 이 문체 규칙이 일반 예시와 부호·이모지 기본값에 우선한다. 후킹·설명·공감의 순서와 확인된 상품 사실은 유지하고, 원문의 문장·계정명·개인 경험·홍보 내용은 옮기지 않는다.'
+  ? '이번 상품 글의 핵심 지시: 첫 번째 수집 글을 작성한 사람이 지금 이 상품을 보고 자기 Threads에 새 상품 글을 올린다고 생각하고 써라. 그 사람이 평소 쓰는 말 높임과 어미, 추임새, 감정의 세기, 독자에게 말을 거는 방식, 농담과 괄호 속 혼잣말, 짧고 긴 문장의 교차와 줄 간격을 실제 본문에 재현한다. 쓰기 전에 원문에서 가장 두드러지는 말버릇과 문장 흐름을 파악하고, 초안을 읽어 일반적인 상품 소개 말투로 돌아간 문장이 있으면 원문 같은 입말로 고친다. 후킹 → 설명 → 공감 순서로 새 상품의 확인된 특징을 연결한다. 원문의 문장, 계정명, 개인 경험과 홍보 내용은 옮기지 않고, 상품을 써봤다는 경험도 만들지 않는다. 이모지는 새 상품과 상황에 어울리는 것을 허용 목록에서 골라 쓴다. 참고 글이 선택된 경우 이 문체 지시를 일반 문체 예시보다 우선한다.'
   : '';
  const rhythmInstruction=rhythm?'options.referenceRhythm의 값이 비어 있지 않으면 후킹에 pause와 exclamation을 실제로 넣고, 공감은 상품과 관련된 자연스러운 반문으로 끝내며 question을 그대로 붙인다. 첫 줄은 설명형 상품명 소개 대신 원문처럼 짧은 감정 반응과 반전으로 시작한다. 이 규칙은 기존 문장부호 예시보다 우선한다. 이모지는 새 상품과 상황에 맞게 선택한다.':'';
  const body={systemInstruction:{parts:[{text:[contract,runtimePrompt,lengthInstruction,referenceInstruction,stylePriority,rhythmInstruction].filter(Boolean).join('\n')}]},contents:[{role:'user',parts:[{text:JSON.stringify(requestData)},...visuals]}],generationConfig:{temperature:0.7,maxOutputTokens:8192,responseMimeType:'application/json',responseSchema}};
