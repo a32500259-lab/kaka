@@ -4,7 +4,7 @@ const postForMode=current=>current?.posts?current.posts[current.mode||'recommend
 const $=id=>document.getElementById(id);
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
 const fields=['url','name','category','price','facts','images','age','occasion','audience','angle','photoCount','customOccasion','targetLength'];
-let loadedUrl='',current=null,drafts=[],loadedProduct=null,generating=false,generationController=null;const recentDrafts=[];let collectedThreads=[];const selectedReferenceIds=new Set();
+let loadedUrl='',current=null,drafts=[],loadedProduct=null,generating=false,generationController=null;const recentDrafts=[];let collectedThreads=[];const selectedReferenceIds=new Set();let photoCandidates=[],selectedPhotoSources=new Set();
 try{drafts=JSON.parse(localStorage.getItem('gift-note-drafts-v2')||'[]');if(!Array.isArray(drafts))drafts=[]}catch{}
 $('count').textContent='0';
 function validLink(raw){try{const u=new URL(raw);return u.protocol==='https:'&&u.hostname==='gift-link.kakao.com'&&!u.username&&!u.password&&/^\/c\/[a-zA-Z0-9]+\/?$/.test(u.pathname)}catch{return false}}
@@ -12,7 +12,7 @@ function safeImage(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!
 function resize(t){t.style.height='auto';t.style.height=t.scrollHeight+4+'px'}
 let requestNumber=0,loading=false;
 function inputLink(){const text=$('url').value.trim();return text.match(/https:\/\/gift-link\.kakao\.com\/c\/[a-zA-Z0-9]+(?:\?[^\s<>\]\)]+)?/)?.[0]||text}
-function clearResult(message){current=null;$('post').replaceChildren();$('photoDownloads').replaceChildren();$('textCount').textContent='';$('lengthHelp').textContent='';$('copyStatus').textContent='';$('photoStatus').textContent='';$('productLink').removeAttribute('href');$('productLink').textContent='';$('rationale').textContent=message;$('copyBtn').disabled=true;$('save').disabled=true;$('sourcePhoto').hidden=true}
+function clearResult(message){current=null;$('post').replaceChildren();const placeholder=document.createElement('textarea');placeholder.id='copyText';placeholder.className='posttext';placeholder.setAttribute('aria-label','스레드에 복사할 전체 글');placeholder.placeholder='상품을 불러오고 글 만들기를 눌러주세요.';$('post').append(placeholder);$('photoDownloads').replaceChildren();$('textCount').textContent='';$('lengthHelp').textContent='';$('copyStatus').textContent='';$('photoStatus').textContent='';$('productLink').removeAttribute('href');$('productLink').textContent='';$('rationale').textContent=message;$('copyBtn').disabled=true;$('save').disabled=true;$('sourcePhoto').hidden=true;updatePhonePreview()}
 async function loadProduct(){
  generationController?.abort();const raw=inputLink(),serial=++requestNumber;loadedProduct=null;
  if(!validLink(raw)){loading=false;loadedUrl='';$('load').disabled=false;$('load').textContent='상품 불러오기';$('generate').disabled=false;$('importStatus').textContent='카카오 큐레이터 링크를 넣어주세요. 공유 문구 전체를 붙여넣어도 됩니다.';clearResult('올바른 상품 주소를 기다리고 있어요.');return false}
@@ -21,17 +21,24 @@ async function loadProduct(){
   const response=await fetch(apiUrl('/api/product?url='+encodeURIComponent(raw)),{signal:AbortSignal.timeout(30000)});const data=await response.json();if(!response.ok)throw new Error(data.error||'상품을 불러오지 못했어요.');
   if(serial!==requestNumber||inputLink()!==raw)return false;
   loadedUrl=raw;loadedProduct=data;for(const id of ['name','price','facts','images','audience','angle','customOccasion'])$(id).value='';
-  $('name').value=data.name;$('price').value=data.price;$('images').value=data.images.join('\n');$('photoCount').value='3';syncPhotoOptions();$('category').value='auto';$('age').value='auto';$('occasion').value='auto';
+  $('name').value=data.name;$('price').value=data.price;$('images').value=data.images.join('\n');$('category').value='auto';$('age').value='auto';$('occasion').value='auto';setPhotoCandidates(data);renderPhotoChoices();
   const generic=/큐레이터 추천 상품|지금 카카오톡 선물하기에서/.test(data.description);$('facts').value=[generic?'':data.description,...(data.productFacts||[]),data.detailText||''].filter(Boolean).join('\n');
   $('productDetails').open=false;syncOccasion();
-  $('importStatus').textContent=`${data.name} · ${data.price||'가격 미표시'} · ${`상품 사진 ${data.images.length}장`} 불러왔어요.`;
+  $('importStatus').textContent=`${data.name} · 원문 사진 후보 ${photoCandidates.length}장${data.partial?' · 일부 정보는 확인되지 않았어요':''}`;
   $('status').textContent='상품을 불러왔어요. 추천 글 만들기를 누르면 이 상품으로 작성됩니다.';$('rationale').textContent='불러온 상품으로 추천 글을 만들 수 있어요.';
   window.dispatchEvent(new Event('product-loaded'));return true;
  }catch(error){if(serial!==requestNumber)return false;loadedUrl='';for(const id of ['name','price','facts','images'])$(id).value='';$('importStatus').textContent=error.name==='TimeoutError'?'상품 응답이 늦어지고 있어요. 다시 불러와주세요.':error.message==='Failed to fetch'?'상품 정보를 가져오지 못했어요. 연결을 확인하고 다시 시도해주세요.':error.message;clearResult('상품을 불러오지 못했어요. 주소를 확인하고 다시 시도해주세요.');return false}
  finally{if(serial===requestNumber){loading=false;$('load').disabled=false;$('load').textContent='상품 불러오기';$('generate').disabled=false}}
 }
-function syncPhotoOptions(){const count=Math.min(3,new Set($('images').value.split('\n').map(x=>x.trim()).filter(Boolean)).size),old=Number($('photoCount').value)||3;$('photoCount').replaceChildren();for(let n=count;n>=1;n--){const option=document.createElement('option');option.value=n;option.textContent=n+'장';$('photoCount').append(option)}if(!count){const o=document.createElement('option');o.value=0;o.textContent='가져온 사진 없음';$('photoCount').append(o)}$('photoCount').value=String(Math.min(old,count));$('photoCount').disabled=!count;return count}
-function imageSet(){const urls=[...new Set($('images').value.split('\n').map(x=>x.trim()).filter(Boolean))];if(!urls.length)return [];if(urls.some(x=>!safeImage(x)))throw new Error('상세페이지 사진 주소를 1장 이상 넣어주세요. https:// 주소를 사용해주세요.');return urls.slice(0,Number($('photoCount').value)).map(src=>({src,alt:$('name').value+' 상품 사진'}))}
+function setPhotoCandidates(product){const detail=(product?.detailImages||[]).filter(x=>x?.url&&safeImage(x.url)&&!(x.height&&x.height<500)).map(x=>({src:x.url,alt:$('name').value+' 상세페이지 사진'}));const gallery=(product?.images||[]).filter(safeImage).map(src=>({src,alt:$('name').value+' 상품 사진'}));const manual=$('images').value.split('\n').map(src=>src.trim()).filter(safeImage).map(src=>({src,alt:$('name').value+' 상품 사진'}));const unique=new Map();for(const item of [...detail,...gallery,...manual])if(!unique.has(item.src))unique.set(item.src,item);photoCandidates=[...unique.values()].slice(0,3);selectedPhotoSources=new Set([...selectedPhotoSources].filter(src=>photoCandidates.some(x=>x.src===src)));syncPhotoOptions();updatePhotoSelectionUi()}
+function syncPhotoOptions(){const count=photoCandidates.length;const selected=selectedPhotoSources.size;$('photoCount').replaceChildren();for(let n=0;n<=3;n++){const option=document.createElement('option');option.value=String(n);option.textContent=n+'장';$('photoCount').append(option)}$('photoCount').value=String(selected);$('photoCount').disabled=!count;return count}
+function imageSet(){const urls=[...selectedPhotoSources];if(urls.length>3)throw new Error('사진은 최대 3장까지 선택할 수 있어요.');if(urls.some(x=>!safeImage(x)))throw new Error('상세페이지 사진 주소를 확인해주세요. https:// 주소를 사용해주세요.');return urls.map(src=>photoCandidates.find(x=>x.src===src)||({src,alt:$('name').value+' 상품 사진'}))}
+function updatePhotoSelectionUi(){const selected=selectedPhotoSources.size;$('photoSelectionCount').textContent=`${selected}/3`;$('selectedPhotoLabel').textContent=selected?`${selected}장 선택`:'선택 전';$('photoSectionSummary').textContent=selected?`선택한 사진 저장 · ${selected}장`:'선택한 사진 저장';$('photoStatus').textContent=photoCandidates.length?`원문 사진 ${photoCandidates.length}장을 찾았어요 · 선택한 사진 하단에 수수료 안내를 넣어 저장합니다.`:'상품을 불러오면 원문에서 사진을 최대 3장 가져와요.';updatePhonePreview()}
+function renderPhotoChoices(){const root=$('photoChoiceList');if(!root)return;root.replaceChildren();if(!photoCandidates.length){$('photoPickerStatus').textContent='먼저 상품 링크를 불러오면 원문 사진을 찾아드려요.';return}$('photoPickerStatus').textContent=`원문 사진 ${photoCandidates.length}장 · 1~3장 선택`;
+ photoCandidates.forEach((photo,index)=>{const label=document.createElement('label');label.className='photo-choice';const check=document.createElement('input');check.type='checkbox';check.checked=selectedPhotoSources.has(photo.src);check.addEventListener('change',()=>{if(check.checked&&selectedPhotoSources.size>=3){check.checked=false;$('photoPickerStatus').textContent='사진은 최대 3장까지 선택할 수 있어요.';return}if(check.checked)selectedPhotoSources.add(photo.src);else selectedPhotoSources.delete(photo.src);syncPhotoOptions();updatePhotoSelectionUi()});const image=document.createElement('img');image.alt=`상품 원문 사진 ${index+1}`;image.src=apiUrl('/api/image?url='+encodeURIComponent(photo.src));image.onerror=()=>{image.alt='사진을 미리 불러오지 못했습니다';image.classList.add('image-load-error')};const caption=document.createElement('span');caption.textContent=`원문 사진 ${index+1}`;label.append(check,image,caption);root.append(label)});
+}
+function updatePhonePreview(){const link=$('phoneLink');if(link)link.hidden=true;const text=$('phoneText');if(text)text.textContent=exportText()||'상품을 불러오고 글을 만들면 Threads 미리보기가 여기에 보여요.';const photos=$('phonePhotos');if(!photos)return;photos.replaceChildren();const selected=imageSetSafe();selected.slice(0,3).forEach(photo=>{const img=document.createElement('img');img.alt=photo.alt;img.src=apiUrl('/api/image?url='+encodeURIComponent(photo.src));photos.append(img)})}
+function imageSetSafe(){try{return imageSet()}catch{return []}}
 function syncOccasion(){const value=$('occasion').value;$('occasionHelp').textContent=value==='auto'?'받는 사람과 선물 고르는 이유가 한 흐름으로 이어지게 써요.':value==='직접'?'적어주신 상황을 글의 출발점으로 사용해요.':sceneFor(value)?.hint||'상품의 쓰임과 선택한 상황을 함께 생각해요.';$('customOccasionWrap').hidden=value!=='직접'}
 function exportText(){return postForMode(current).replaceAll(DISCLOSURE,'').replace(/(^|\n)(https:\/\/gift-link\.kakao\.com\/c\/[^\s]+)/g,'$1카카오톡 선물하기 : $2').replace(/\n{3,}/g,'\n\n').trim()}
 function updateCount(){
@@ -61,10 +68,10 @@ function preparePhoto(photo){
 function render(){
  if(!current)return;syncPhotoOptions();const selling=!current.posts||current.mode==='recommend';$('photoSection').hidden=!selling;$('productLink').hidden=!selling;
  document.querySelectorAll('[data-kind]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.kind===(current.mode||'recommend')));b.disabled=!current.posts});
- $('modeHint').textContent=selling?'상품을 고른 이유와 링크 · 제품 사진 함께 첨부':'생활 주제로 대화하는 글 · 상품명, 구매 링크, 제품 사진 없이 복사';
+ $('modeHint').textContent=selling?'상품을 고른 이유와 링크 · 제품 사진 함께 첨부':'생활 주제로 대화하는 글 · 상품 링크와 제품 사진 없이 복사';
  $('copyBtn').disabled=Boolean(current.dirty);$('save').disabled=Boolean(current.dirty);$('post').replaceChildren();$('photoDownloads').replaceChildren();$('rationale').textContent=current.rationale+(current.provider?' · '+current.provider+' / '+current.model:' · 과거 저장 초안');syncOccasion();
  const ta=document.createElement('textarea');ta.id='copyText';ta.className='posttext';ta.setAttribute('aria-label','스레드에 복사할 전체 글');ta.value=exportText();
- ta.addEventListener('input',()=>{if(current.posts)current.posts[current.mode]=ta.value;else current.postText=ta.value;resize(ta);updateCount()});$('post').appendChild(ta);updateCount();
+ ta.addEventListener('input',()=>{if(current.posts)current.posts[current.mode]=ta.value;else current.postText=ta.value;resize(ta);updateCount();updatePhonePreview()});$('post').appendChild(ta);updateCount();
  (selling?current.photos:[]).forEach((photo,i)=>{
   const figure=document.createElement('figure'),frame=document.createElement('div'),img=document.createElement('img');figure.className='productphoto';frame.className='photowindow';
   img.alt=photo.alt+' · 하단 수수료 안내 포함';frame.textContent='안내 문구를 사진에 넣고 있어요…';figure.appendChild(frame);
@@ -73,8 +80,8 @@ function render(){
   preparePhoto(photo).then(url=>{frame.replaceChildren(img);img.src=url;button.disabled=false;button.onclick=()=>{const a=document.createElement('a');a.href=url;a.download=`gift-photo-disclosed-${i+1}.jpg`;a.click();$('photoStatus').textContent=`안내 문구가 들어간 사진 ${i+1} 다운로드를 시작했어요.`}}).catch(()=>{frame.className='photo-error';frame.textContent='사진을 불러오지 못해 안내 문구를 넣지 못했어요. 사진 주소를 확인해주세요.';label.textContent='저장 준비 실패'});
  });
  $('productLink').textContent='원본 상품 링크 확인 ↗';$('productLink').href=current.link;$('sourcePhoto').hidden=true;
- $('copyStatus').textContent=selling?'추천 글과 링크만 복사됩니다. 수수료 안내는 아래 사진 안에 자동 삽입됩니다.':'선택한 글만 복사됩니다. 구매 링크와 제품 사진은 붙이지 않습니다.';
- $('photoStatus').textContent=current.photos.length?`수집된 사진 ${$('images').value.split('\n').filter(Boolean).length}장 중 ${current.photos.length}장을 준비했어요. 각 사진 하단에 수수료 안내가 한 줄로 포함됩니다.`:'가져온 사진이 없어요. 상품 정보에서 사진 주소를 추가할 수 있습니다.';requestAnimationFrame(()=>resize(ta));
+ $('copyStatus').textContent='';
+ $('photoStatus').textContent=current.photos.length?`원문에서 고른 ${current.photos.length}장 · 저장 파일 하단에 수수료 안내를 한 줄로 넣어요.`:'이미지 추가를 눌러 원문 사진을 최대 3장 불러오세요.';updatePhonePreview();requestAnimationFrame(()=>resize(ta));
 }
 async function generate(){
  if(loading||generating)return;if(inputLink()!==loadedUrl||!loadedUrl){if(!await loadProduct())return}
@@ -87,7 +94,7 @@ async function generate(){
   const status=await writerStatus(controller.signal);updateAiStatus(status);
   if(!status.configured)throw new Error('Gemini 무료 연결 설정을 확인해야 합니다.');
   if(!status.connected){showConnection();throw new Error('먼저 작업실 연결 코드를 입력해주세요. API 키는 서버에서만 사용합니다.')}
-  const {visuals,failures}=await prepareVisuals(loadedProduct,controller.signal,message=>{$('status').textContent=message});
+  const chosen=[...selectedPhotoSources];const visualProduct=chosen.length?{...loadedProduct,images:loadedProduct.images.filter(src=>chosen.includes(src)),detailImages:loadedProduct.detailImages.filter(item=>chosen.includes(item.url))}:loadedProduct;const {visuals,failures}=await prepareVisuals(visualProduct,controller.signal,message=>{$('status').textContent=message});
   $('status').textContent='Gemini가 상품 사진과 설명을 읽고, 글의 흐름을 다듬고 있어요…';
   const referenceThreads=collectedThreads.filter(post=>selectedReferenceIds.has(post.id)&&typeof post.id==='string').slice(0,3).map(post=>({text:String(post.text||'').slice(0,1600)}));
   const result=await requestGiftPosts({...input,link,visuals,recentDrafts,referenceThreads},controller.signal);
@@ -101,7 +108,7 @@ async function generate(){
   if(error.code==='AUTH_REQUIRED')showConnection();
   $('status').textContent=error.name==='AbortError'?'작성이 중단됐어요. 다시 만들기를 눌러주세요.':error.message;
   if(previous&&current===previous)$('status').textContent+=' 기존 초안은 그대로 남아 있습니다.';
- }finally{clearTimeout(timeout);generating=false;generationController=null;button.disabled=loading;$('regenerate').disabled=false;button.textContent='Gemini로 글 만들기 →';$('post').removeAttribute('aria-busy')}
+ }finally{clearTimeout(timeout);generating=false;generationController=null;button.disabled=loading;$('regenerate').disabled=false;button.textContent='✎ 내 글 바꾸기';$('post').removeAttribute('aria-busy')}
 }
 function updateAiStatus(status){$('aiConnectionState').textContent=!status.configured?'Gemini 설정 확인 필요':status.connected?'Gemini 무료 연결됨':'Gemini · 작업실 연결 필요';$('aiConnectionState').dataset.connected=String(status.configured&&status.connected)}
 function showConnection(){$('aiConnectionDialog').showModal();$('writerConnectionCode').focus()}
@@ -140,9 +147,9 @@ function renderCollectedThreads(){
 function selectedReferencePosts(){return collectedThreads.filter(post=>post.id&&selectedReferenceIds.has(post.id)).slice(0,3)}
 function renderReferenceSelection(){
  const root=$('selectedReferences');if(!root)return;root.replaceChildren();
- const selected=selectedReferencePosts();$('referenceSelectionSummary').textContent=selected.length?`${selected.length}개 선택 · 다음 글 생성에서 말투와 문단 흐름을 참고합니다.`:'수집한 글을 골라두면 다음 글 작성 때 말투와 흐름을 참고합니다.';
- if(!selected.length){const empty=document.createElement('p');empty.className='reference-empty';empty.textContent='아직 불러온 글이 없어요. 수집 글 불러오기를 눌러 골라주세요.';root.append(empty);return}
- for(const post of selected){const item=document.createElement('article');item.className='selected-reference';const copy=document.createElement('p');copy.textContent=String(post.text||'').slice(0,220)+(String(post.text||'').length>220?'…':'');const meta=document.createElement('span');meta.textContent=`${post.author||'Threads 게시물'} · ♥ ${post.likes??'—'}`;const remove=document.createElement('button');remove.type='button';remove.textContent='선택에서 빼기';remove.addEventListener('click',()=>{selectedReferenceIds.delete(post.id);renderReferenceSelection();renderReferenceLibrary()});item.append(copy,meta,remove);root.append(item)}
+ const selected=selectedReferencePosts();$('referenceCount').textContent=`참고 글 ${selected.length}개`;$('referenceToolbarCount').textContent=`선택한 참고 글 ${selected.length}개`;
+ if(!selected.length){const empty=document.createElement('p');empty.className='reference-empty';empty.textContent='수집한 글을 불러오면\n여기에 원문이 보여요.';root.append(empty);return}
+ for(const post of selected){const item=document.createElement('article');item.className='selected-reference';const head=document.createElement('div');head.className='selected-reference-head';const author=document.createElement('strong');author.textContent='@'+(post.author||'Threads 게시물').replace(/^@/,'');const date=document.createElement('span');date.textContent=post.date||'수집한 글';head.append(author,date);const copy=document.createElement('p');copy.textContent=String(post.text||'').slice(0,900)+(String(post.text||'').length>900?'…':'');const meta=document.createElement('div');meta.className='benchmark-metrics';meta.textContent=`♡ ${post.likes??'—'}　◯ ${post.replies??'—'}　⟳ ${post.reposts??'—'}`;const actions=document.createElement('div');actions.className='benchmark-actions';const original=document.createElement('a');try{const url=new URL(post.url);if(url.protocol==='https:'&&/(^|\.)threads\.com$/.test(url.hostname)){original.href=url.href;original.target='_blank';original.rel='noopener noreferrer';original.textContent='원문 열기 ↗'}}catch{}const remove=document.createElement('button');remove.type='button';remove.textContent='참고 해제';remove.addEventListener('click',()=>{selectedReferenceIds.delete(post.id);renderReferenceSelection();renderReferenceLibrary()});actions.append(original,remove);item.append(head,copy,meta,actions);root.append(item)}
 }
 function renderReferenceLibrary(){
  const root=$('referenceLibraryList');if(!root)return;root.replaceChildren();
@@ -161,11 +168,14 @@ function deleteCollectedThread(id){if(!window.confirm('이 게시물을 수집�
 window.addEventListener('message',event=>{const data=event.data;if(event.source!==window||event.origin!==location.origin||data?.source!=='gift-note-extension')return;if(data.type==='references-error'){collectionStatus.textContent='확장프로그램 연결이 끊겼어요. 확장프로그램을 새로고침한 뒤 이 사이트 탭도 새로고침해주세요.';collectionStatus.dataset.error='true';if(referencePickerStatus)referencePickerStatus.textContent='Chrome 확장프로그램 연결을 다시 시작한 뒤 목록을 불러와주세요.';return}if(!Array.isArray(data.items))return;if(data.type==='delete-result'){$('collectionStatus').textContent=data.deleted?'게시물을 수집목록에서 삭제했어요.':'삭제하지 못했어요. 확장프로그램 연결을 확인해주세요.';if(!data.deleted)$('collectionStatus').dataset.error='true';else delete $('collectionStatus').dataset.error;collectedThreads=data.items;const validIds=new Set(data.items.map(post=>post.id));for(const id of selectedReferenceIds)if(!validIds.has(id))selectedReferenceIds.delete(id);renderCollectedThreads();return}if(!['references','references-updated'].includes(data.type))return;collectedThreads=data.items;const validIds=new Set(data.items.map(post=>post.id));for(const id of selectedReferenceIds)if(!validIds.has(id))selectedReferenceIds.delete(id);renderCollectedThreads();$('collectionStatus').textContent='확장프로그램 수집 내용과 동기화됨';delete $('collectionStatus').dataset.error;});
 window.addEventListener('gift-note-extension-ready',requestCollectedThreads);
 requestCollectedThreads();
- $('openReferencePicker').onclick=()=>{$('referencePickerDialog').showModal();renderReferenceLibrary()};$('closeReferencePicker').onclick=()=>$('referencePickerDialog').close();$('applyReferenceSelection').onclick=()=>{$('referencePickerDialog').close();renderReferenceSelection();$('referencePickerStatus').textContent=`${selectedReferencePosts().length}개 글을 다음 생성에 참고하도록 불러왔어요.`};$('clearReferenceSelection').onclick=()=>{selectedReferenceIds.clear();renderReferenceSelection();renderReferenceLibrary()};
+ function openReferencePicker(){$('referencePickerDialog').showModal();renderReferenceLibrary()}
+ $('openReferencePicker').onclick=openReferencePicker;$('openReferencePickerSide').onclick=openReferencePicker;$('openReferencePickerBottom').onclick=openReferencePicker;$('openReferencePickerInline').onclick=openReferencePicker;$('closeReferencePicker').onclick=()=>$('referencePickerDialog').close();$('applyReferenceSelection').onclick=()=>{$('referencePickerDialog').close();renderReferenceSelection();$('referencePickerStatus').textContent=`${selectedReferencePosts().length}개 글을 벤치마킹 원문에 불러왔어요.`};$('clearReferenceSelection').onclick=()=>{selectedReferenceIds.clear();renderReferenceSelection();renderReferenceLibrary()};
+ function openPhotoPicker(){if(!loadedProduct){$('photoPickerStatus').textContent='먼저 카카오톡 선물하기 상품 링크를 불러와주세요.';$('photoPickerDialog').showModal();return}setPhotoCandidates(loadedProduct);renderPhotoChoices();$('photoPickerDialog').showModal()}
+ $('addImages').onclick=openPhotoPicker;$('closePhotoPicker').onclick=()=>$('photoPickerDialog').close();$('clearPhotoSelection').onclick=()=>{selectedPhotoSources.clear();syncPhotoOptions();renderPhotoChoices();updatePhotoSelectionUi()};$('applyPhotoSelection').onclick=()=>{if(!selectedPhotoSources.size){$('photoPickerStatus').textContent='사진을 1장 이상 골라주세요. 최대 3장까지 선택할 수 있어요.';return}$('photoPickerDialog').close();syncPhotoOptions();updatePhotoSelectionUi();if(current){current.photos=imageSet();render()}$('status').textContent=`원문 사진 ${selectedPhotoSources.size}장을 글과 함께 준비했어요.`};
  $('saved').onclick=()=>{$('history').hidden=false;renderCollectedThreads();requestCollectedThreads();$('history').scrollIntoView({behavior:'smooth'})};$('closeHistory').onclick=()=>{$('history').hidden=true};$('occasion').addEventListener('change',syncOccasion);window.addEventListener('resize',()=>document.querySelectorAll('.posttext').forEach(resize));$('url').value='';clearResult('상품 링크를 넣어 시작해보세요.');
 
 
 document.querySelectorAll('[data-kind]').forEach(button=>button.onclick=()=>{if(!current?.posts)return;current.mode=button.dataset.kind;render()});
 
 $('photoCount').addEventListener('change',()=>{if(current){current.photos=imageSet();render();}});
-$('images').addEventListener('input',syncPhotoOptions);
+$('images').addEventListener('input',()=>{setPhotoCandidates(loadedProduct);renderPhotoChoices()});
