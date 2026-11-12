@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#faf9ff">
   <title>선물노트 · 스레드 스튜디오</title>
-  <link href="style.css?v=studio-20261112-3" rel="stylesheet">
+  <link href="style.css?v=studio-20261112-4" rel="stylesheet">
 </head>
 <body>
   <header class="topbar">
@@ -15,7 +15,6 @@
       <span class="threads-chip">▱ <b>Threads</b></span>
       <button class="reference-top" id="openReferencePicker" type="button"><span id="referenceCount">참고 글 0개</span></button>
       <button class="product-top" id="productImportOpen" type="button" aria-current="step">＋ 상품 링크 가져오기</button>
-      <button class="edit-top" id="generate" type="button">✎ 내 글 바꾸기</button>
       <button class="analysis-top" id="analyzeDraft" type="button">✧ 분석</button>
     </nav>
     <div class="top-actions"><details class="more-tools"><summary aria-label="더 보기">···</summary><div class="more-tools-menu"><button id="saved" type="button">수집한 스레드 <b id="count">0</b></button><button id="rulesNav" type="button">글쓰기 지침</button><span class="ai-status" id="aiConnectionState" role="status">Gemini 연결 확인 중…</span><button id="aiConnect" class="connect-button" type="button">작업실 연결</button></div></details><span class="saved-indicator">☁ 임시저장됨</span></div>
@@ -40,11 +39,13 @@
         <section class="writing-card" aria-labelledby="writingTitle">
           <div class="writing-heading"><div><h2 id="writingTitle">내 계정에 어울리는 글</h2><p>참고한 글을 바탕으로, 내 계정의 톤과 관점에 맞게 작성해 보세요.</p></div><span class="char-count" id="textCount"></span></div>
           <div class="postidentity"><span class="avatar">선</span><div><b>howabout.pick</b><small id="modeHint">상품을 고른 이유와 링크 · 제품 사진 함께 첨부</small></div><span>···</span></div>
+          <div class="generation-controls"><button class="edit-top" id="generate" type="button">✎ 내 글 바꾸기</button><span id="generationContext" class="generation-context" aria-live="polite"></span></div>
+          <p id="status" class="status-line" role="status" aria-live="polite"></p>
           <div class="post-edit-row"><div id="post"><textarea id="copyText" class="posttext" aria-label="스레드에 복사할 전체 글" placeholder="상품을 불러오고 글 만들기를 눌러주세요."></textarea></div><aside id="inlineProductCard" class="inline-product-card"><span class="product-tag">선물 아이템</span><div class="summary-image" id="summaryImage">＋</div><h3 id="summaryName">상품을 불러오면 여기에 보여요</h3><p id="summaryFacts">상품에서 확인한 정보를 바탕으로 글을 작성합니다.</p><a hidden id="summaryLink" rel="noopener noreferrer" target="_blank">상품 원문 ↗</a><details class="photo-section" id="photoSection"><summary id="photoSectionSummary">선택한 사진 저장</summary><div id="photoDownloads" class="photo-downloads"></div><p class="help" id="photoStatus" role="status">이미지 추가를 눌러 원문 사진을 최대 3장 불러오세요.</p></details></aside></div>
           <div class="rationale" id="rationale" hidden>상품과 참고 글을 불러오면 작성 준비가 돼요.</div>
           <div class="product-link-row" hidden><a id="productLink" rel="noopener noreferrer" target="_blank"></a><span id="lengthHelp" class="help"></span><a id="sourcePhoto" hidden></a><span id="selectedPhotoLabel">선택 전</span></div>
           <div class="editor-actions"><button class="outline-button" id="regenerate" type="button">⟳ 다른 관점으로 다시 쓰기</button><span class="action-spacer"></span><button id="copyBtn" type="button">글 복사</button><button class="save-button" id="save" type="button">초안 저장</button></div>
-          <p class="help" id="copyStatus" role="status"></p><p id="status" class="status-line" role="status"></p>
+          <p class="help" id="copyStatus" role="status"></p>
         </section>
       </section>
 
@@ -59,10 +60,10 @@
   <dialog id="productImportDialog" class="picker-dialog product-import-dialog"><section><div class="dialog-heading"><div><h2>상품 링크 가져오기</h2><p class="help">카카오톡 선물하기 큐레이터 링크를 넣어 상품 정보와 원문 사진을 불러와요.</p></div><button id="closeProductImport" type="button">닫기</button></div><label class="sr-only" for="url">선물하기 큐레이터 링크</label><div class="import-controls"><textarea id="url" rows="1" placeholder="카카오톡 선물하기 큐레이터 링크 붙여넣기"></textarea><button id="load" type="button">상품 불러오기</button></div><p class="import-status" id="importStatus" role="status">큐레이터 링크를 붙여넣어 주세요.</p><details id="productDetails" class="product-details"><summary>상품 정보 확인 및 수정</summary><label for="name">상품명</label><input id="name" maxlength="150"><div class="two"><div><label for="category">상품 종류</label><select id="category"><option value="auto">상품명으로 분류</option><option value="beauty">뷰티 · 헤어</option><option value="food">디저트 · 식품</option><option value="home">리빙 · 생활</option><option value="tech">디지털 · 가전</option><option value="fashion">패션 · 소품</option><option value="general">기타</option></select></div><div><label for="price">가격 <small>참고용 · 글에는 제외</small></label><input id="price" maxlength="40" placeholder="상품 페이지 확인 정보"></div></div><label for="facts">추가 특징 <small>선택 · 한 줄에 하나씩</small></label><textarea id="facts" rows="3" placeholder="상품에서 확인한 특징"></textarea><label for="images">사진 주소 <small>수동 추가가 필요할 때</small></label><textarea id="images" rows="2" placeholder="https://…"></textarea></details></section></dialog>
 
   <dialog id="referencePickerDialog" class="picker-dialog"><section><div class="dialog-heading"><div><h2>수집한 스레드 불러오기</h2><p class="help">선택한 글의 말투와 문단 흐름을 새 글에 참고해요.</p></div><button id="closeReferencePicker" type="button">닫기</button></div><p id="referencePickerStatus" class="help" role="status"></p><div id="referenceLibraryList" class="reference-library-list"></div><div class="dialog-actions"><button id="clearReferenceSelection" type="button">선택 해제</button><button id="applyReferenceSelection" type="button" class="primary">선택한 글 불러오기</button></div></section></dialog>
-  <dialog id="photoPickerDialog" class="picker-dialog photo-picker-dialog"><section><div class="dialog-heading"><div><h2>상품 원문 사진 고르기</h2><p class="help">상세페이지에서 가져온 사진 중 1~3장을 선택할 수 있어요.</p></div><button id="closePhotoPicker" type="button">닫기</button></div><p id="photoPickerStatus" class="help" role="status"></p><div id="photoChoiceList" class="photo-choice-list"></div><p class="photo-rights-note">사진은 후보 추출용입니다. 상세페이지 이미지의 외부 재게시 범위는 판매자·브랜드 안내를 확인한 뒤 사용해주세요.</p><div class="dialog-actions"><button id="clearPhotoSelection" type="button">선택 해제</button><button id="applyPhotoSelection" type="button" class="primary">선택한 사진 추가</button></div></section></dialog>
+  <dialog id="photoPickerDialog" class="picker-dialog photo-picker-dialog"><section><div class="dialog-heading"><div><h2>상품 메인 사진 고르기</h2><p class="help">상품 페이지 대표 사진과 메인 사진 중 1~3장을 선택할 수 있어요.</p></div><button id="closePhotoPicker" type="button">닫기</button></div><p id="photoPickerStatus" class="help" role="status"></p><div id="photoChoiceList" class="photo-choice-list"></div><p class="photo-rights-note">사진은 후보 추출용입니다. 외부 재게시 범위는 판매자·브랜드 안내를 확인한 뒤 사용해주세요.</p><div class="dialog-actions"><button id="clearPhotoSelection" type="button">선택 해제</button><button id="applyPhotoSelection" type="button" class="primary">선택한 사진 추가</button></div></section></dialog>
   <dialog id="aiConnectionDialog"><form id="aiConnectionForm"><div class="dialog-heading"><div><h2>내 작업실 연결</h2><p class="help">Gemini 무료 연결을 확인해요.</p></div></div><label for="writerConnectionCode">작업실 연결 코드</label><input id="writerConnectionCode" type="password" autocomplete="off" required><label class="remember-connection"><input id="rememberWriterConnection" type="checkbox"> 이 브라우저에 연결 유지</label><p class="help">API 키는 서버 비밀 설정에서만 사용합니다.</p><p id="aiConnectionMessage" role="status"></p><div class="dialog-actions"><button id="aiConnectionClose" type="button">닫기</button><button type="submit" class="primary">연결 확인</button></div></form></dialog>
 
-  <script src="app.js?v=studio-20261112-3" type="module"></script>
-  <script src="workflow.js?v=studio-20261112-3" type="module"></script>
+  <script src="app.js?v=studio-20261112-4" type="module"></script>
+  <script src="workflow.js?v=studio-20261112-4" type="module"></script>
 </body>
 </html>
