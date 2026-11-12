@@ -4,13 +4,45 @@
   const KEY = 'giftNoteThreadReferences';
   const origin = location.origin;
 
+  function postError(requestId = '') {
+    try {
+      window.postMessage({
+        source: 'gift-note-extension',
+        type: 'references-error',
+        requestId,
+        reason: 'extension-context-unavailable',
+        items: []
+      }, origin);
+    } catch {}
+  }
+
+  function storageGet() {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+        throw new Error('Extension context unavailable');
+      }
+      return chrome.storage.local.get(KEY);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
+  function storageSet(value) {
+    try {
+      if (typeof chrome === 'undefined' || !chrome.runtime?.id) {
+        throw new Error('Extension context unavailable');
+      }
+      return chrome.storage.local.set(value);
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+
   function publish(type, requestId = '') {
-    chrome.storage.local.get(KEY).then(result => {
+    storageGet().then(result => {
       const items = Array.isArray(result[KEY]) ? result[KEY] : [];
       window.postMessage({ source: 'gift-note-extension', type, requestId, items }, origin);
-    }).catch(() => {
-      window.postMessage({ source: 'gift-note-extension', type: 'references-error', items: [] }, origin);
-    });
+    }).catch(() => postError(requestId));
   }
 
   window.addEventListener('message', event => {
@@ -22,23 +54,25 @@
       return;
     }
     if (data.type !== 'delete-reference' || typeof data.id !== 'string' || data.id.length > 100) return;
-    chrome.storage.local.get(KEY).then(async result => {
+    storageGet().then(async result => {
       const items = Array.isArray(result[KEY]) ? result[KEY] : [];
       const filtered = items.filter(item => item?.id !== data.id);
       if (filtered.length === items.length) {
         window.postMessage({ source: 'gift-note-extension', type: 'delete-result', requestId, deleted: false, items }, origin);
         return;
       }
-      await chrome.storage.local.set({ [KEY]: filtered });
+      await storageSet({ [KEY]: filtered });
       window.postMessage({ source: 'gift-note-extension', type: 'delete-result', requestId, deleted: true, items: filtered }, origin);
-    }).catch(() => {
-      window.postMessage({ source: 'gift-note-extension', type: 'delete-result', requestId, deleted: false, items: [] }, origin);
-    });
+    }).catch(() => postError(requestId));
   });
 
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes[KEY]) publish('references-updated');
-  });
+  try {
+    if (typeof chrome !== 'undefined' && chrome.runtime?.id) {
+      chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === 'local' && changes[KEY]) publish('references-updated');
+      });
+    }
+  } catch {}
 
   window.dispatchEvent(new Event('gift-note-extension-ready'));
 })();
