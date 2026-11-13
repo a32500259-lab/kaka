@@ -12,13 +12,14 @@ let cloudApi=null,cloudFailure='',remoteThreads=[],extensionThreadsReady=false;c
 const cloudApiReady=import('./firebase-store.js?v=firebase-save-1').then(async api=>{await api.initializeCloud();cloudApi=api;$('cloudStatus').textContent='☁ 클라우드 저장 연결됨';$('cloudStatus').title='이 브라우저의 익명 Firebase 계정에 저장합니다. 다른 기기 공유는 로그인 연결 후 사용할 수 있어요.';return api}).catch(error=>{cloudFailure=error?.message||'연결할 수 없습니다';$('cloudStatus').textContent='☁ 브라우저 저장만 사용 중';$('cloudStatus').title='Firebase 연결 실패: '+cloudFailure;return null});
 function cloudIdFor(kind,item){if(item?.id&&kind==='collectedThreads')return String(item.id);if(item?.cloudId)return String(item.cloudId);const signature=kind==='dailyDrafts'?`${item?.date||''}|${item?.output||''}|${item?.source||''}`:`${item?.date||''}|${item?.body||item?.postText||item?.posts?.recommend||''}|${item?.link||''}`;let hash=2166136261;for(const char of signature){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619)}return `${kind}-${(hash>>>0).toString(36)}`}
 const deletedDraftsKey='gift-note-deleted-drafts';
-function deletedDraftIds(){
+const deletedThreadsKey='gift-note-deleted-collected-threads';
+function deletedIds(key){
  try{
-  const ids=JSON.parse(localStorage.getItem(deletedDraftsKey)||'[]');
+  const ids=JSON.parse(localStorage.getItem(key)||'[]');
   return new Set(Array.isArray(ids)?ids:[]);
  }catch{return new Set()}
 }
-function mergeCloudItems(kind,...groups){const seen=kind==='collectedThreads'?new Set():deletedDraftIds(),merged=[];for(const group of groups)for(const raw of group||[]){if(!raw||typeof raw!=='object')continue;const item={...raw};if(kind!=='collectedThreads')item.cloudId=cloudIdFor(kind,item);const key=cloudIdFor(kind,item);if(seen.has(key))continue;seen.add(key);merged.push(item)}return merged}
+function mergeCloudItems(kind,...groups){const seen=deletedIds(kind==='collectedThreads'?deletedThreadsKey:deletedDraftsKey),merged=[];for(const group of groups)for(const raw of group||[]){if(!raw||typeof raw!=='object')continue;const item={...raw};if(kind!=='collectedThreads')item.cloudId=cloudIdFor(kind,item);const key=cloudIdFor(kind,item);if(seen.has(key))continue;seen.add(key);merged.push(item)}return merged}
 function storeLocalSnapshot(kind,items){if(kind==='productDrafts'){localStorage.setItem('gift-note-drafts-v2',JSON.stringify(items));drafts=items}else if(kind==='dailyDrafts'){localStorage.setItem(dailyArchiveKey,JSON.stringify(items));dailyDrafts=items}}
 const draftCloudWrites=new Map();
 function writeCloudSnapshot(kind,items){
@@ -26,13 +27,38 @@ function writeCloudSnapshot(kind,items){
  const write=prior.catch(()=>{}).then(async()=>{
   const api=await cloudApiReady;
   if(!api)throw new Error(cloudFailure||'Firebase 연결을 사용할 수 없어요.');
-  await api.writeSnapshot(kind,mergeCloudItems(kind,items));
+  const stored=await api.readSnapshot(kind);
+  await api.writeSnapshot(kind,mergeCloudItems(kind,items,stored));
  });
  draftCloudWrites.set(kind,write);
  return write;
 }
-async function hydrateCloud(){const api=await cloudApiReady;if(!api)return;try{const [remoteProducts,remoteDaily,threads]=await Promise.all([api.readSnapshot('productDrafts'),api.readSnapshot('dailyDrafts'),api.readSnapshot('collectedThreads')]);const mergedProducts=mergeCloudItems('productDrafts',drafts,remoteProducts),mergedDaily=mergeCloudItems('dailyDrafts',dailyDrafts,remoteDaily);drafts=mergedProducts;dailyDrafts=mergedDaily;storeLocalSnapshot('productDrafts',drafts);storeLocalSnapshot('dailyDrafts',dailyDrafts);remoteThreads=mergeCloudItems('collectedThreads',threads);collectedThreads=mergeCloudItems('collectedThreads',collectedThreads,remoteThreads);$('archiveCount').textContent='저장한 글 '+(archiveKind==='daily'?dailyDrafts:drafts).length+'개';if(!$('draftArchive').hidden)renderArchive();renderCollectedThreads();await Promise.all([writeCloudSnapshot('productDrafts',drafts),writeCloudSnapshot('dailyDrafts',dailyDrafts),...(remoteThreads.length?[api.writeSnapshot('collectedThreads',remoteThreads)]:[])]);$('cloudStatus').textContent='☁ 클라우드 저장 완료'}catch(error){cloudFailure=error?.message||'Firebase 저장 자료를 읽지 못했어요';$('cloudStatus').textContent='☁ 클라우드 동기화 오류';$('cloudStatus').title=cloudFailure}}
-function saveCollectedThreads(items,removedIds=[]){const current=remoteThreads.filter(item=>!removedIds.includes(item.id));collectedThreads=mergeCloudItems('collectedThreads',current,items);renderCollectedThreads();(async()=>{const api=await cloudApiReady;if(!api)throw new Error(cloudFailure||'Firebase 연결을 사용할 수 없어요.');const stored=await api.readSnapshot('collectedThreads');const filtered=stored.filter(item=>!removedIds.includes(item.id));remoteThreads=mergeCloudItems('collectedThreads',filtered,items);collectedThreads=remoteThreads;await api.writeSnapshot('collectedThreads',remoteThreads);renderCollectedThreads();$('collectionStatus').textContent='Chrome 확장프로그램과 Firebase에 저장됨';delete $('collectionStatus').dataset.error})().catch(error=>{$('collectionStatus').textContent='브라우저 수집목록은 갱신했지만 Firebase 저장에 실패했어요: '+error.message;$('collectionStatus').dataset.error='true'})}
+async function hydrateCloud(){const api=await cloudApiReady;if(!api)return;try{const [remoteProducts,remoteDaily,threads]=await Promise.all([api.readSnapshot('productDrafts'),api.readSnapshot('dailyDrafts'),api.readSnapshot('collectedThreads')]);const mergedProducts=mergeCloudItems('productDrafts',drafts,remoteProducts),mergedDaily=mergeCloudItems('dailyDrafts',dailyDrafts,remoteDaily);drafts=mergedProducts;dailyDrafts=mergedDaily;storeLocalSnapshot('productDrafts',drafts);storeLocalSnapshot('dailyDrafts',dailyDrafts);remoteThreads=mergeCloudItems('collectedThreads',threads);collectedThreads=mergeCloudItems('collectedThreads',collectedThreads,remoteThreads);$('archiveCount').textContent='저장한 글 '+(archiveKind==='daily'?dailyDrafts:drafts).length+'개';if(!$('draftArchive').hidden)renderArchive();renderCollectedThreads();await Promise.all([writeCloudSnapshot('productDrafts',drafts),writeCloudSnapshot('dailyDrafts',dailyDrafts)]);$('cloudStatus').textContent='☁ 클라우드 저장 완료'}catch(error){cloudFailure=error?.message||'Firebase 저장 자료를 읽지 못했어요';$('cloudStatus').textContent='☁ 클라우드 동기화 오류';$('cloudStatus').title=cloudFailure}}
+let collectedCloudWrite=Promise.resolve();
+function saveCollectedThreads(items,removedIds=[]){
+ const removed=new Set(removedIds.map(String));
+ const keep=item=>!removed.has(String(item?.id));
+ remoteThreads=remoteThreads.filter(keep);
+ collectedThreads=mergeCloudItems('collectedThreads',collectedThreads.filter(keep),remoteThreads,items.filter(keep));
+ const validIds=new Set(collectedThreads.map(post=>post.id));
+ for(const id of selectedReferenceIds)if(!validIds.has(id))selectedReferenceIds.delete(id);
+ renderCollectedThreads();
+ collectedCloudWrite=collectedCloudWrite.catch(()=>{}).then(async()=>{
+  const api=await cloudApiReady;
+  if(!api)throw new Error(cloudFailure||'Firebase 연결을 사용할 수 없어요.');
+  const stored=await api.readSnapshot('collectedThreads');
+  remoteThreads=mergeCloudItems('collectedThreads',stored.filter(keep),items.filter(keep));
+  await api.writeSnapshot('collectedThreads',remoteThreads);
+  collectedThreads=mergeCloudItems('collectedThreads',collectedThreads,remoteThreads);
+  renderCollectedThreads();
+  $('collectionStatus').textContent='수집목록을 클라우드에 반영했어요.';
+  delete $('collectionStatus').dataset.error;
+ }).catch(error=>{
+  $('collectionStatus').textContent='이 브라우저의 목록은 갱신했어요. 클라우드에는 사이트를 다시 열 때 동기화를 시도합니다.';
+  $('collectionStatus').dataset.error='true';
+  $('collectionStatus').title=error.message;
+ });
+}
 function validLink(raw){try{const u=new URL(raw);return u.protocol==='https:'&&u.hostname==='gift-link.kakao.com'&&!u.username&&!u.password&&/^\/c\/[a-zA-Z0-9]+\/?$/.test(u.pathname)}catch{return false}}
 function safeImage(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!u.username&&!u.password}catch{return false}}
 function resize(t){t.style.height='auto';t.style.height=t.scrollHeight+4+'px'}
@@ -331,7 +357,7 @@ let archiveKind='product';
 async function deleteArchiveDraft(kind,draft){
  if(!window.confirm('보관함에서 이 글을 삭제할까요?'))return;
  const collection=kind==='daily'?'dailyDrafts':'productDrafts';
- const removed=deletedDraftIds();
+ const removed=deletedIds(deletedDraftsKey);
  removed.add(cloudIdFor(collection,draft));
  const status=$('archiveStatus');
  let remaining;
@@ -421,29 +447,53 @@ function renderReferenceLibrary(){
  }
 }
 function requestCollectedThreads(){const requestId=crypto.randomUUID();window.postMessage({source:'gift-note-site',type:'get-references',requestId},location.origin)}
-function deleteCollectedThread(id){if(!window.confirm('이 게시물을 수집목록에서 삭제할까요?'))return;const requestId=crypto.randomUUID();pendingThreadDeletes.set(requestId,id);window.postMessage({source:'gift-note-site',type:'delete-reference',requestId,id},location.origin);$('collectionStatus').textContent='삭제 중…'}
+function requestExtensionDeletion(id){
+ if([...pendingThreadDeletes.values()].includes(id))return;
+ const requestId=crypto.randomUUID();
+ pendingThreadDeletes.set(requestId,id);
+ window.postMessage({source:'gift-note-site',type:'delete-reference',requestId,id},location.origin);
+ setTimeout(()=>pendingThreadDeletes.delete(requestId),5000);
+}
+function deleteCollectedThread(id){
+ if(!window.confirm('이 게시물을 수집목록에서 삭제할까요?'))return;
+ const removed=deletedIds(deletedThreadsKey);
+ removed.add(String(id));
+ try{localStorage.setItem(deletedThreadsKey,JSON.stringify([...removed]))}
+ catch{
+  $('collectionStatus').textContent='브라우저에 삭제를 기록하지 못했어요. 저장 공간을 확인해주세요.';
+  return;
+ }
+ selectedReferenceIds.delete(id);
+ saveCollectedThreads(collectedThreads,[id]);
+ $('collectionStatus').textContent='수집목록에서 삭제했어요. 클라우드에도 반영 중이에요.';
+ requestExtensionDeletion(id);
+}
 let lastExtensionThreadIds=null;
 window.addEventListener('message',event=>{
  const data=event.data;
  if(event.source!==window||event.origin!==location.origin||data?.source!=='gift-note-extension')return;
- if(data.type==='references-error'){$('collectionStatus').textContent='확장프로그램 연결이 끊겼어요. 확장프로그램을 새로고침한 뒤 이 사이트 탭도 새로고침해주세요.';$('collectionStatus').dataset.error='true';if(referencePickerStatus)referencePickerStatus.textContent='Chrome 확장프로그램 연결을 다시 시작한 뒤 목록을 불러와주세요.';return}
+ if(data.type==='references-error'){
+  if(pendingThreadDeletes.delete(data.requestId))return;
+  $('collectionStatus').textContent='확장프로그램 연결이 끊겼어요. 확장프로그램을 새로고침한 뒤 이 사이트 탭도 새로고침해주세요.';
+  $('collectionStatus').dataset.error='true';
+  if(referencePickerStatus)referencePickerStatus.textContent='Chrome 확장프로그램 연결을 다시 시작한 뒤 목록을 불러와주세요.';
+  return;
+ }
  if(!Array.isArray(data.items))return;
  if(data.type==='delete-result'){
-  const deletedId=pendingThreadDeletes.get(data.requestId);pendingThreadDeletes.delete(data.requestId);
-  $('collectionStatus').textContent=data.deleted?'게시물을 수집목록에서 삭제했어요.':'삭제하지 못했어요. 확장프로그램 연결을 확인해주세요.';
-  if(!data.deleted)$('collectionStatus').dataset.error='true';else{delete $('collectionStatus').dataset.error;if(deletedId){lastExtensionThreadIds=new Set(data.items.map(post=>post.id));saveCollectedThreads(data.items,[deletedId])}}
-  if(!data.deleted){collectedThreads=mergeCloudItems('collectedThreads',remoteThreads,data.items);renderCollectedThreads()}
-  const validIds=new Set(data.items.map(post=>post.id));for(const id of selectedReferenceIds)if(!validIds.has(id))selectedReferenceIds.delete(id);return
+  pendingThreadDeletes.delete(data.requestId);
+  return;
  }
  if(!['references','references-updated'].includes(data.type))return;
  const incomingIds=new Set(data.items.map(post=>post.id));const removed=data.type==='references-updated'&&lastExtensionThreadIds?[...lastExtensionThreadIds].filter(id=>!incomingIds.has(id)):[];
  lastExtensionThreadIds=incomingIds;extensionThreadsReady=true;
- const validIds=new Set(data.items.map(post=>post.id));for(const id of selectedReferenceIds)if(!validIds.has(id))selectedReferenceIds.delete(id);
  saveCollectedThreads(data.items,removed);
+ for(const id of deletedIds(deletedThreadsKey))if(incomingIds.has(id))requestExtensionDeletion(id);
 });
 window.addEventListener('gift-note-extension-ready',requestCollectedThreads);
 requestCollectedThreads();
 const initialCloudHydration=hydrateCloud();
+if(deletedIds(deletedThreadsKey).size)initialCloudHydration.then(()=>saveCollectedThreads([]));
  function openReferencePicker(){$('referencePickerDialog').showModal();renderReferenceLibrary()}
 $('openReferencePicker').onclick=openReferencePicker;$('openReferencePickerSide').onclick=openReferencePicker;$('openReferencePickerBottom').onclick=openReferencePicker;$('closeReferencePicker').onclick=()=>$('referencePickerDialog').close();$('applyReferenceSelection').onclick=()=>{$('referencePickerDialog').close();renderReferenceSelection();$('referencePickerStatus').textContent=`${selectedReferencePosts().length}개 글을 벤치마킹 원문에 불러왔어요.`};$('clearReferenceSelection').onclick=()=>{selectedReferenceIds.clear();renderReferenceSelection();renderReferenceLibrary()};
  $('applyInlinePhotos').onclick=applyInlinePhotoSelection;$('clearInlinePhotos').onclick=()=>{selectedPhotoSources.clear();if(current)current.photos=[];syncPhotoOptions();renderPhotoChoices();updatePhotoSelectionUi();if(current)render();$('photoStatus').textContent='사진 선택을 해제했어요.'};
