@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#faf9ff">
   <title>선물노트 · 스레드 스튜디오</title>
-  <link href="style.css?v=5d6ed1e65a92524b" rel="stylesheet">
+  <link href="style.css?v=b5cf0da2ac738405" rel="stylesheet">
   <script>
     (() => {
-      const current = '5d6ed1e65a92524b';
+      const current = 'b5cf0da2ac738405';
       const version = new URL('release.json', location.href);
       version.searchParams.set('check', Date.now());
       fetch(version, { cache: 'no-store', signal: AbortSignal.timeout(5000) })
@@ -92,7 +92,7 @@
     </section>
 
     <section hidden id="history"><div class="section-title"><div><h2>스레드 수집글</h2><p class="help">Chrome 확장프로그램에서 모은 게시물이 여기에 표시됩니다.</p></div><button id="closeHistory" type="button">닫기</button></div><p class="collection-status" id="collectionStatus" role="status">Chrome 확장프로그램과 연결하는 중…</p><input id="collectionSearch" type="search" aria-label="수집글 검색" placeholder="수집글 검색"><div class="collection-grid-scroll"><div id="historylist" aria-live="polite"></div></div></section>
-    <section hidden id="rulesPanel"><div class="stage-heading"><span>◇</span><div><h2>우리 계정의 글쓰기 지침</h2><p>2030 선물 큐레이터 · 자연스러운 대화체</p></div></div><p>모든 글은 첫 세 줄을 후킹 → 설명 → 공감 순으로 씁니다.</p><ul><li>구체적인 발견으로 시작하고, 상품 특징과 선물 고민을 이어갑니다.</li><li>문장 단위 줄바꿈, 주제가 전환되면 한 줄을 띄웁니다.</li><li>가격이나 확인되지 않은 사용 후기는 넣지 않습니다.</li><li>큐레이터 수수료 안내는 저장 사진 하단에 한 줄로 표시합니다.</li></ul><a href="writer-prompt.md?v=5d6ed1e65a92524b" download>Gemini에 전달하는 글쓰기 지침 ↗</a><p><button id="closeRules" type="button">작업실로 돌아가기</button></p></section>
+    <section hidden id="rulesPanel"><div class="stage-heading"><span>◇</span><div><h2>우리 계정의 글쓰기 지침</h2><p>2030 선물 큐레이터 · 자연스러운 대화체</p></div></div><p>모든 글은 첫 세 줄을 후킹 → 설명 → 공감 순으로 씁니다.</p><ul><li>구체적인 발견으로 시작하고, 상품 특징과 선물 고민을 이어갑니다.</li><li>문장 단위 줄바꿈, 주제가 전환되면 한 줄을 띄웁니다.</li><li>가격이나 확인되지 않은 사용 후기는 넣지 않습니다.</li><li>큐레이터 수수료 안내는 저장 사진 하단에 한 줄로 표시합니다.</li></ul><a href="writer-prompt.md?v=b5cf0da2ac738405" download>Gemini에 전달하는 글쓰기 지침 ↗</a><p><button id="closeRules" type="button">작업실로 돌아가기</button></p></section>
     <section id="draftArchive" hidden aria-labelledby="archiveTitle">
       <h2 id="archiveTitle">내 글 보관함</h2>
       <div class="archive-filters" role="group" aria-label="저장한 글 종류">
@@ -111,7 +111,7 @@
   <dialog id="referencePickerDialog" class="picker-dialog"><section><div class="dialog-heading"><div><h2>수집한 스레드 불러오기</h2><p class="help">선택한 글의 말투와 문단 흐름을 새 글에 참고해요.</p></div><button id="closeReferencePicker" type="button">닫기</button></div><p id="referencePickerStatus" class="help" role="status"></p><div id="referenceLibraryList" class="reference-library-list"></div><div class="dialog-actions"><button id="clearReferenceSelection" type="button">선택 해제</button><button id="applyReferenceSelection" type="button" class="primary">선택한 글 불러오기</button></div></section></dialog>
   <dialog id="aiConnectionDialog"><form id="aiConnectionForm"><div class="dialog-heading"><div><h2>내 작업실 연결</h2><p class="help">Gemini 무료 연결을 확인해요.</p></div></div><label for="writerConnectionCode">작업실 연결 코드</label><input id="writerConnectionCode" type="password" autocomplete="off" required><label class="remember-connection"><input id="rememberWriterConnection" type="checkbox"> 이 브라우저에 연결 유지</label><p class="help">API 키는 서버 비밀 설정에서만 사용합니다.</p><p id="aiConnectionMessage" role="status"></p><div class="dialog-actions"><button id="aiConnectionClose" type="button">닫기</button><button type="submit" class="primary">연결 확인</button></div></form></dialog>
 
-  <script src="app.js?v=5d6ed1e65a92524b" type="module"></script>
-  <script src="workflow.js?v=5d6ed1e65a92524b" type="module"></script>
+  <script src="app.js?v=b5cf0da2ac738405" type="module"></script>
+  <script src="workflow.js?v=b5cf0da2ac738405" type="module"></script>
 </body>
 </html>
