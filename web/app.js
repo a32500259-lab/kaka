@@ -19,7 +19,30 @@ function deletedIds(key){
   return new Set(Array.isArray(ids)?ids:[]);
  }catch{return new Set()}
 }
-function mergeCloudItems(kind,...groups){const seen=deletedIds(kind==='collectedThreads'?deletedThreadsKey:deletedDraftsKey),merged=[];for(const group of groups)for(const raw of group||[]){if(!raw||typeof raw!=='object')continue;const item={...raw};if(kind!=='collectedThreads')item.cloudId=cloudIdFor(kind,item);const key=cloudIdFor(kind,item);if(seen.has(key))continue;seen.add(key);merged.push(item)}return merged}
+const referenceEditsKey='gift-note-reference-edits';
+function readReferenceEdits(){
+ try{return new Map(JSON.parse(localStorage.getItem(referenceEditsKey)||'[]'))}
+ catch{return new Map()}
+}
+function mergeCloudItems(kind,...groups){
+ const collected=kind==='collectedThreads';
+ const deleted=deletedIds(collected?deletedThreadsKey:deletedDraftsKey);
+ const edits=collected?readReferenceEdits():null;
+ const merged=new Map();
+ for(const group of groups)for(const raw of group||[]){
+  if(!raw||typeof raw!=='object')continue;
+  const key=cloudIdFor(kind,raw);
+  if(deleted.has(key))continue;
+  if(!merged.has(key))merged.set(key,collected?{...raw}:{...raw,cloudId:key});
+  if(collected){
+   const item=merged.get(key);
+   for(const edit of [raw.referenceEdit,edits.get(key)]){
+    if(typeof edit?.text==='string'&&edit.text.trim()&&edit.at>(item.referenceEdit?.at||0))item.referenceEdit=edit;
+   }
+  }
+ }
+ return [...merged.values()];
+}
 function storeLocalSnapshot(kind,items){if(kind==='productDrafts'){localStorage.setItem('gift-note-drafts-v2',JSON.stringify(items));drafts=items}else if(kind==='dailyDrafts'){localStorage.setItem(dailyArchiveKey,JSON.stringify(items));dailyDrafts=items}}
 const draftCloudWrites=new Map();
 function writeCloudSnapshot(kind,items){
@@ -215,12 +238,50 @@ function cleanCollectedText(value) {
  }
  return (numbers>=2||marker?lines.slice(0,end):lines).join('\n').trim();
 }
+function collectedBody(post){
+ return post.referenceEdit?.text||cleanCollectedText(post.text);
+}
+function referenceBody(post){
+ if(post.referenceEdit?.text)return post.referenceEdit.text;
+ const lines=cleanCollectedText(post.text).split('\n');
+ const author=String(post.author||'').replace(/^@/,'');
+ if(author&&lines[0]?.trim().replace(/^@/,'')===author){
+  lines.shift();
+  const timestamp=lines.slice(0,3).findIndex(line=>/^(?:\d+\s*(?:초|분|시간|일|주)(?:\s*전)?|\d{4}-\d{2}-\d{2})$/.test(line.trim()));
+  if(timestamp>=0)lines.splice(0,timestamp+1);
+ }
+ return lines.join('\n').trim();
+}
+let editingReferenceId=null;
+function openReferenceEditor(post){
+ editingReferenceId=String(post.id);
+ $('referenceEditText').value=referenceBody(post);
+ $('referenceEditStatus').textContent='';
+ $('referenceEditDialog').showModal();
+}
+$('cancelReferenceEdit').addEventListener('click',()=>$('referenceEditDialog').close());
+$('referenceEditForm').addEventListener('submit',event=>{
+ event.preventDefault();
+ const text=$('referenceEditText').value.trim();
+ const status=$('referenceEditStatus');
+ if(!text){status.textContent='참고글 본문을 입력해주세요.';return}
+ const post=collectedThreads.find(item=>String(item.id)===editingReferenceId);
+ if(!post){status.textContent='이 수집글을 찾을 수 없어요.';return}
+ const edits=readReferenceEdits();
+ const referenceEdit={text,at:Math.max(Date.now(),(post.referenceEdit?.at||0)+1)};
+ edits.set(editingReferenceId,referenceEdit);
+ try{localStorage.setItem(referenceEditsKey,JSON.stringify([...edits]))}
+ catch{status.textContent='브라우저에 수정 내용을 저장하지 못했어요.';return}
+ $('referenceEditDialog').close();
+ saveCollectedThreads([{...post,referenceEdit}]);
+ $('collectionStatus').textContent='수정한 참고글을 저장했어요. 클라우드에도 반영 중이에요.';
+});
 function renderCollectedThreads(){
  const root=$('historylist');root.replaceChildren();$('count').textContent=String(collectedThreads.length);
  renderReferenceSelection();renderReferenceLibrary();
  if(!collectedThreads.length){root.textContent='아직 수집한 글이 없어요. Chrome에서 Threads 글 옆의 수집 버튼을 누르면 여기에 나타납니다.';return}
  const query=$('collectionSearch').value.trim().toLocaleLowerCase();
- const matches=collectedThreads.filter(post=>[post.author,post.text].some(value=>String(value||'').toLocaleLowerCase().includes(query)));
+ const matches=collectedThreads.filter(post=>[post.author,collectedBody(post)].some(value=>String(value||'').toLocaleLowerCase().includes(query)));
  if(!matches.length){root.textContent='검색에 맞는 수집글이 없어요.';return}
  for(const post of matches){
   const card=document.createElement('article');card.className='collected-thread';
@@ -228,7 +289,7 @@ function renderCollectedThreads(){
   const author=document.createElement('strong');author.textContent=post.author||'Threads 게시물';
   const date=document.createElement('time');date.textContent=post.collectedAt?new Date(post.collectedAt).toLocaleString('ko-KR'):(post.date||'');
   head.append(author,date);
-  const text=document.createElement('p');text.className='collected-thread-text';text.textContent=cleanCollectedText(post.text);
+  const text=document.createElement('p');text.className='collected-thread-text';text.textContent=collectedBody(post);
   const foot=document.createElement('div');foot.className='collected-thread-foot';
   const metrics=document.createElement('span');metrics.textContent=[post.views!=null?`조회 ${post.views}`:'조회수 미표시',post.likes!=null?`좋아요 ${post.likes}`:'좋아요 미표시'].join(' · ');
   const actions=document.createElement('div');actions.className='collected-thread-actions';
@@ -242,7 +303,10 @@ function renderCollectedThreads(){
    selectedReferenceIds.add(post.id);renderReferenceSelection();renderReferenceLibrary();
    window.dispatchEvent(new Event('collection-reference-picked'));
   });
-  actions.append(use,remove);
+  const edit=document.createElement('button');
+  edit.type='button';edit.textContent='수정';edit.disabled=!post.id;
+  edit.addEventListener('click',()=>openReferenceEditor(post));
+  actions.append(use,edit,remove);
   foot.append(metrics,actions);
   try{const u=new URL(post.url);if(u.protocol==='https:'&&/(^|\.)threads\.com$/.test(u.hostname)){const link=document.createElement('a');link.href=u.href;link.target='_blank';link.rel='noopener noreferrer';link.textContent='원문 열기 ↗';foot.append(link)}}catch{}
   card.append(head,text,foot);root.append(card);
@@ -250,16 +314,7 @@ function renderCollectedThreads(){
 }
 function selectedReferencePosts(){return [...selectedReferenceIds].map(id=>collectedThreads.find(post=>post.id===id)).filter(post=>post&&typeof post.text==='string'&&post.text.trim()).slice(0,3)}
 function referencePayload(){
- return selectedReferencePosts().map(post=>{
-  const lines=cleanCollectedText(post.text).split('\n');
-  const author=String(post.author||'').replace(/^@/,'');
-  if(author&&lines[0]?.trim().replace(/^@/,'')===author){
-   lines.shift();
-   const timestamp=lines.slice(0,3).findIndex(line=>/^(?:\d+\s*(?:초|분|시간|일|주)(?:\s*전)?|\d{4}-\d{2}-\d{2})$/.test(line.trim()));
-   if(timestamp>=0)lines.splice(0,timestamp+1);
-  }
-  return {text:lines.join('\n').trim().slice(0,1200)};
- }).filter(post=>post.text);
+ return selectedReferencePosts().map(post=>({text:referenceBody(post).slice(0,1200)})).filter(post=>post.text);
 }
 function formatDailyDraft(text){
  const sentences=new Intl.Segmenter('ko',{granularity:'sentence'});
@@ -432,7 +487,7 @@ function renderReferenceSelection(){
  const root=$('selectedReferences');if(!root)return;root.replaceChildren();
  const selected=selectedReferencePosts();syncGenerationContext();
  if(!selected.length){const empty=document.createElement('p');empty.className='reference-empty';empty.textContent='수집한 글을 불러오면\n여기에 원문이 보여요.';root.append(empty);return}
- for(const post of selected){const item=document.createElement('article');item.className='selected-reference';const head=document.createElement('div');head.className='selected-reference-head';const author=document.createElement('strong');author.textContent='@'+(post.author||'Threads 게시물').replace(/^@/,'');const date=document.createElement('span');date.textContent=post.date||'수집한 글';head.append(author,date);const copy=document.createElement('p');copy.textContent=cleanCollectedText(post.text);const meta=document.createElement('div');meta.className='benchmark-metrics';meta.textContent=`♡ ${post.likes??'—'}　◯ ${post.replies??'—'}　⟳ ${post.reposts??'—'}`;const actions=document.createElement('div');actions.className='benchmark-actions';const original=document.createElement('a');try{const url=new URL(post.url);if(url.protocol==='https:'&&/(^|\.)threads\.com$/.test(url.hostname)){original.href=url.href;original.target='_blank';original.rel='noopener noreferrer';original.textContent='원문 열기 ↗'}}catch{}const remove=document.createElement('button');remove.type='button';remove.textContent='참고 해제';remove.addEventListener('click',()=>{selectedReferenceIds.delete(post.id);renderReferenceSelection();renderReferenceLibrary()});actions.append(original,remove);item.append(head,copy,meta,actions);root.append(item)}
+ for(const post of selected){const item=document.createElement('article');item.className='selected-reference';const head=document.createElement('div');head.className='selected-reference-head';const author=document.createElement('strong');author.textContent='@'+(post.author||'Threads 게시물').replace(/^@/,'');const date=document.createElement('span');date.textContent=post.date||'수집한 글';head.append(author,date);const copy=document.createElement('p');copy.textContent=collectedBody(post);const meta=document.createElement('div');meta.className='benchmark-metrics';meta.textContent=`♡ ${post.likes??'—'}　◯ ${post.replies??'—'}　⟳ ${post.reposts??'—'}`;const actions=document.createElement('div');actions.className='benchmark-actions';const original=document.createElement('a');try{const url=new URL(post.url);if(url.protocol==='https:'&&/(^|\.)threads\.com$/.test(url.hostname)){original.href=url.href;original.target='_blank';original.rel='noopener noreferrer';original.textContent='원문 열기 ↗'}}catch{}const remove=document.createElement('button');remove.type='button';remove.textContent='참고 해제';remove.addEventListener('click',()=>{selectedReferenceIds.delete(post.id);renderReferenceSelection();renderReferenceLibrary()});actions.append(original,remove);item.append(head,copy,meta,actions);root.append(item)}
 }
 function renderReferenceLibrary(){
  const root=$('referenceLibraryList');if(!root)return;root.replaceChildren();
@@ -442,7 +497,7 @@ function renderReferenceLibrary(){
   const card=document.createElement('article');card.className='reference-library-item';
   const label=document.createElement('label');label.className='reference-choice';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=Boolean(post.id&&selectedReferenceIds.has(post.id));checkbox.disabled=!post.id;
   checkbox.addEventListener('change',()=>{if(checkbox.checked&&selectedReferenceIds.size>=3){checkbox.checked=false;$('referencePickerStatus').textContent='참고 글은 한 번에 최대 3개까지 선택할 수 있어요.';return}if(checkbox.checked)selectedReferenceIds.add(post.id);else selectedReferenceIds.delete(post.id);renderReferenceSelection()});
-  const body=document.createElement('span');body.className='reference-choice-copy';const author=document.createElement('strong');author.textContent=post.author||'Threads 게시물';const text=document.createElement('span');text.textContent=cleanCollectedText(post.text);const metrics=document.createElement('small');metrics.textContent=`조회 ${post.views??'—'} · 좋아요 ${post.likes??'—'}`;body.append(author,text,metrics);label.append(checkbox,body);
+  const body=document.createElement('span');body.className='reference-choice-copy';const author=document.createElement('strong');author.textContent=post.author||'Threads 게시물';const text=document.createElement('span');text.textContent=collectedBody(post);const metrics=document.createElement('small');metrics.textContent=`조회 ${post.views??'—'} · 좋아요 ${post.likes??'—'}`;body.append(author,text,metrics);label.append(checkbox,body);
   const remove=document.createElement('button');remove.type='button';remove.className='delete-collected-thread';remove.textContent='삭제';remove.disabled=!post.id;remove.addEventListener('click',()=>{if(post.id)deleteCollectedThread(post.id)});card.append(label,remove);root.append(card);
  }
 }
@@ -493,7 +548,7 @@ window.addEventListener('message',event=>{
 window.addEventListener('gift-note-extension-ready',requestCollectedThreads);
 requestCollectedThreads();
 const initialCloudHydration=hydrateCloud();
-if(deletedIds(deletedThreadsKey).size)initialCloudHydration.then(()=>saveCollectedThreads([]));
+if(deletedIds(deletedThreadsKey).size||readReferenceEdits().size)initialCloudHydration.then(()=>saveCollectedThreads([]));
  function openReferencePicker(){$('referencePickerDialog').showModal();renderReferenceLibrary()}
 $('openReferencePickerSide').onclick=openReferencePicker;$('openReferencePickerBottom').onclick=openReferencePicker;$('closeReferencePicker').onclick=()=>$('referencePickerDialog').close();$('applyReferenceSelection').onclick=()=>{$('referencePickerDialog').close();renderReferenceSelection();$('referencePickerStatus').textContent=`${selectedReferencePosts().length}개 글을 벤치마킹 원문에 불러왔어요.`};$('clearReferenceSelection').onclick=()=>{selectedReferenceIds.clear();renderReferenceSelection();renderReferenceLibrary()};
  $('applyInlinePhotos').onclick=applyInlinePhotoSelection;$('clearInlinePhotos').onclick=()=>{selectedPhotoSources.clear();if(current)current.photos=[];syncPhotoOptions();renderPhotoChoices();updatePhotoSelectionUi();if(current)render();$('photoStatus').textContent='사진 선택을 해제했어요.'};
