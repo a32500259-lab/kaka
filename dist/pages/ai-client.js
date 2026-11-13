@@ -42,11 +42,13 @@ async function requestGeneration(input,signal){
 }
 export async function requestGiftPosts(input,signal){
  const data=await requestGeneration(input,signal);
+ if(input.referenceThreads?.length&&data.qualityReview?.status!=='passed')throw new Error('말투 심사 통과를 확인하지 못해 새 글을 표시하지 않았어요. 기존 초안은 그대로입니다.');
  if(!data.posts||!['recommend','conversation','guide'].every(k=>typeof data.posts[k]==='string'))throw new Error('AI 글 결과가 올바르지 않습니다.');
  return data;
 }
 export async function requestDailyPost(input,signal){
  const data=await requestGeneration({...input,mode:'daily'},signal);
+ if(input.referenceThreads?.length&&data.qualityReview?.status!=='passed')throw new Error('말투 심사 통과를 확인하지 못해 새 글을 표시하지 않았어요. 기존 초안은 그대로입니다.');
  if(typeof data.text!=='string'||!data.text.trim())throw new Error('일상글 결과를 읽지 못했어요.');
- return data.text;
+ return data;
 }

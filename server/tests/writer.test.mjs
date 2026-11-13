@@ -10,6 +10,8 @@ const env={GEMINI_API_KEY:'test-only-key',GIFT_WRITER_TOKEN:'test-only-token',GE
 const good={recommend:'집들이 선물로 조명을 고르면 방에 놓을 자리부터 떠올리게 돼.\n\n밝기를 조절할 수 있어서 침대 옆에 둘 걸 찾는 친구한테도 보여주고 싶어.',conversation:'집들이 선물을 같이 고르는 건 성의 없는 게 아니라 실패를 줄이는 방법 같아.\n\n깜짝 선물도 좋지만 진짜 필요한 걸 묻는 마음도 좋잖아.',guide:'조명을 선물한다면 침대 옆에 둘 건지 책상에서 쓸 건지 먼저 알아보는 편.\n\n둘 장소가 정해져야 크기랑 전원 위치도 생각하기 편하니까.',audience:'방을 꾸미는 30대 친구',angle:'둘 자리에 맞는 집들이 선물',evidence:['밝기 조절'],photoNotes:['사진에 보이는 조명 본체와 앞면 조절부']};
 function modelShape(data){const result={...data};for(const kind of ['recommend','conversation','guide'])if(typeof result[kind]==='string'){const text=result[kind].trim();const lines=text.split(/\n+/).flatMap(line=>line.split(/(?<=[.!?])\s+/)).map(line=>line.trim()).filter(line=>line&&!/^https?:\/\//i.test(line)&&!/^카카오톡\s*선물하기\s*:/i.test(line));while(lines.length<3)lines.push('선물 받을 사람의 취향도 함께 떠올려요.');result[kind]={hook:lines[0],explanation:lines[1],empathy:lines[2],continuation:lines.slice(3).join('\n')}}return result}
 const answer=data=>new Response(JSON.stringify({modelVersion:'gemini-test-version',candidates:[{finishReason:'STOP',content:{parts:[{text:JSON.stringify(modelShape(data))}]}}]}),{headers:{'content-type':'application/json'}});
+const dimensions=['endings','rhythm','emotion','readerAddress','paragraphs','punctuation'];
+const passingReview=names=>({posts:names.map(name=>({name,...Object.fromEntries(dimensions.map(key=>[key,4])),grounded:true,threadsFormat:true,structure:true,comparisons:dimensions.map(dimension=>({dimension,observed:'원문의 친근한 구어체와 의미별 줄바꿈',actual:'결과에도 친근한 말투와 의미 단위 줄이 있음'})),issues:[]}))});
 test('real provider request carries prompt, visuals and selected audience; only app adds original link',async()=>{
  let seen;const result=await generateGiftPosts(input,evidence,env,{fetcher:async(url,options)=>{seen={url,options,body:JSON.parse(options.body)};return answer(good)}});
  assert.ok(seen.url.endsWith('/'+GEMINI_MODEL+':generateContent'));
@@ -24,13 +26,13 @@ test('real provider request carries prompt, visuals and selected audience; only 
 test('selected collected Threads posts reach Gemini as style references',async()=>{
  const referenceThreads=[{text:'요즘 선물 고르는 게 생각보다 어렵더라!!!\n받는 사람 취향부터 떠올리게 돼 🎁'}];let seen;
  const responseData={...good,referenceStyle:'발견에서 선물 고민으로 이어지는 흐름',referenceProof:'집들이 선물로 조명을 고르면 방에 놓을 자리부터 떠올리게 돼'};
- const result=await generateGiftPosts({...input,referenceThreads,recentDrafts:['예전 초안']},evidence,env,{fetcher:async(url,options)=>{seen=JSON.parse(options.body);return answer(responseData)}});
+ const result=await generateGiftPosts({...input,referenceThreads,recentDrafts:['예전 초안']},evidence,env,{fetcher:async(url,options)=>{const body=JSON.parse(options.body);if(body.generationConfig.responseSchema.properties.posts)return answer(passingReview(['recommend','conversation','guide']));seen=body;return answer(responseData)}});
  const requestInput=JSON.parse(seen.contents[0].parts[0].text);
  assert.deepEqual(requestInput.options.referenceThreads,referenceThreads.map(item=>item.text));
  assert.deepEqual(requestInput.options.recentDrafts,[]);
  assert.match(seen.systemInstruction.parts[0].text,/referenceThreads/);
- assert.match(result.posts.recommend,/!!!/);
- assert.match(result.referenceStyle,/!!!/);
+ assert.equal(result.qualityReview.status,'passed');
+ assert.match(result.referenceStyle,/별도 심사 통과/);
 });
 test('daily editor sends its own story, length and collected reference to Gemini without product photos',async()=>{
  const source='비 오는 날 퇴근길에 동료가 우산을 빌려줬어.';
@@ -39,8 +41,8 @@ test('daily editor sends its own story, length and collected reference to Gemini
   let sent;
   const output=await generateDailyPost({source,referenceThreads,targetLength},env,{
    fetcher:async(_url,options)=>{
-    sent=JSON.parse(options.body);
-    return answer({hook:'퇴근길에 비가 오더라',scene:['동료가 우산을 빌려줬어','그 장면이 계속 생각났어'],empathy:'작은 배려가 오래 남더라'});
+    const body=JSON.parse(options.body);if(body.generationConfig.responseSchema.properties.posts)return answer(passingReview(['daily']));sent=body;
+    return answer({referenceVoice:'친근한 독백',paragraphs:[['퇴근길에 비가 오더라','동료가 우산을 빌려줬어','그 장면이 계속 생각났어'],['작은 배려가 오래 남더라']]});
    }
   });
   assert.deepEqual(JSON.parse(sent.contents[0].parts[0].text),{source,referenceThreads:referenceThreads.map(item=>item.text),targetLength});
@@ -127,7 +129,7 @@ test('all three length choices reach Gemini alongside the same voice instruction
   let request;
   const result=await generateGiftPosts({...input,targetLength},evidence,env,{fetcher:async(url,options)=>{request=JSON.parse(options.body);return answer(good)}});
   assert.equal(JSON.parse(request.contents[0].parts[0].text).options.targetLength,targetLength);
-  assert.match(request.systemInstruction.parts[0].text,/첫째 줄은 후킹/);
+  assert.match(request.systemInstruction.parts[0].text,/첫 줄 후킹/);
   assert.match(request.systemInstruction.parts[0].text,/가격과 URL/);
   assert.equal(result.targetLength,targetLength);
  }

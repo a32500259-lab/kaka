@@ -190,7 +190,7 @@ async function generate(){
  const controller=new AbortController();generationController=controller;generating=true;
  const input=Object.fromEntries(['facts','age','occasion','customOccasion','targetLength'].map(id=>[id,$(id).value]));const link=loadedUrl,serial=requestNumber;
  const previous=current;const button=$('generate');button.disabled=true;button.textContent='Gemini가 작성 중…';$('generationContext').textContent='상품 정보와 선택한 참고 글을 확인하고 있어요.';$('status').textContent='Gemini 연결과 상품 사진을 확인하고 있어요…';$('post').setAttribute('aria-busy','true');
- let timeout=setTimeout(()=>controller.abort('timeout'),150000);
+ let timeout=setTimeout(()=>controller.abort('timeout'),300000);
  try{
   const status=await writerStatus(controller.signal);updateAiStatus(status);
   if(!status.configured)throw new Error('Gemini 무료 연결 설정을 확인해야 합니다.');
@@ -198,6 +198,7 @@ async function generate(){
   const chosen=[...selectedPhotoSources];const mainPhotos=chosen.length?chosen:photoCandidates.map(photo=>photo.src).slice(0,3);if(!mainPhotos.length)throw new Error('상품 메인 사진이 없어 초안을 만들지 않았어요. 사진이 있는 상품을 불러와주세요.');const visualProduct={...loadedProduct,images:mainPhotos,detailImages:[]};const {visuals}=await prepareVisuals(visualProduct,controller.signal,message=>{$('status').textContent=message});
   $('status').textContent='Gemini가 상품 사진과 설명을 읽고, 글의 흐름을 다듬고 있어요…';
   const referenceThreads=referencePayload();
+  if(referenceThreads.length){button.textContent='작성·말투 심사 중…';$('status').textContent='완성글을 원문과 별도로 대조합니다. 불합격이면 최대 2회 다시 작성하며, 통과한 글만 표시해요. 무료 한도·혼잡 오류에서는 중단합니다.'}
   $('generationContext').textContent=`참고 글 ${referenceThreads.length}개 · 후킹 → 설명 → 공감 · 가격 제외`;
   const result=await requestGiftPosts({...input,link,visuals,recentDrafts,referenceThreads},controller.signal);
   if(controller.signal.aborted||serial!==requestNumber||inputLink()!==link)return;
@@ -351,10 +352,11 @@ $('dailyGenerate').addEventListener('click',async()=>{
  button.disabled=dailySource.readOnly=dailyOutput.readOnly=dailyLength.disabled=true;
   dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 말투·글쓰기 0순위로 보내고 있어요.`:'선택한 참고글이 없어요. 입력한 이야기를 바탕으로 작성하고 있어요.';
  try{
-  const generated=await requestDailyPost({source,targetLength:Number(dailyLength.value),referenceThreads},AbortSignal.timeout(75000));
-  dailyOutput.value=formatDailyDraft(generated);
+  dailyStatus.textContent=referenceThreads.length?'작성 → 원문과 말투 별도 심사 → 불합격 시 최대 2회 재작성 중입니다. 통과한 글만 표시해요.':'입력한 이야기를 작성하고 있어요.';
+  const generated=await requestDailyPost({source,targetLength:Number(dailyLength.value),referenceThreads},AbortSignal.timeout(300000));
+  dailyOutput.value=generated.text;
   updateDailyPreview();
-   dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 0순위 말투 기준으로 요청해 작성했어요.`:'입력한 내용을 바탕으로 작성했어요.';
+   dailyStatus.textContent=generated.referenceStyle||'입력한 내용을 바탕으로 작성했어요.';
  }catch(error){
   dailyStatus.textContent=error.message;
   if(error.code==='AUTH_REQUIRED')showConnection();
