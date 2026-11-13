@@ -1,6 +1,6 @@
-import {sceneFor} from './scene-options.js?v=4edfb9cde15c2256';
-import {requestDailyPost} from './ai-client.js?v=4edfb9cde15c2256';
-import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=4edfb9cde15c2256';
+import {sceneFor} from './scene-options.js?v=9123dd77378a280e';
+import {requestDailyPost} from './ai-client.js?v=9123dd77378a280e';
+import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=9123dd77378a280e';
 const postForMode=current=>current?.posts?current.posts[current.mode||'recommend']||'':current?.postText??[...(current?.sections||[]),current?.link].filter(Boolean).join('\n\n');
 const $=id=>document.getElementById(id);
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
@@ -9,7 +9,7 @@ let loadedUrl='',current=null,drafts=[],loadedProduct=null,generating=false,gene
 try{drafts=JSON.parse(localStorage.getItem('gift-note-drafts-v2')||'[]');if(!Array.isArray(drafts))drafts=[]}catch{}
 $('count').textContent='0';
 let cloudApi=null,cloudFailure='',remoteThreads=[],extensionThreadsReady=false;const pendingThreadDeletes=new Map();
-const cloudApiReady=import('./firebase-store.js?v=4edfb9cde15c2256').then(async api=>{await api.initializeCloud();cloudApi=api;$('cloudStatus').textContent='☁ 클라우드 저장 연결됨';$('cloudStatus').title='이 브라우저의 익명 Firebase 계정에 저장합니다. 다른 기기 공유는 로그인 연결 후 사용할 수 있어요.';return api}).catch(error=>{cloudFailure=error?.message||'연결할 수 없습니다';$('cloudStatus').textContent='☁ 브라우저 저장만 사용 중';$('cloudStatus').title='Firebase 연결 실패: '+cloudFailure;return null});
+const cloudApiReady=import('./firebase-store.js?v=9123dd77378a280e').then(async api=>{await api.initializeCloud();cloudApi=api;$('cloudStatus').textContent='☁ 클라우드 저장 연결됨';$('cloudStatus').title='이 브라우저의 익명 Firebase 계정에 저장합니다. 다른 기기 공유는 로그인 연결 후 사용할 수 있어요.';return api}).catch(error=>{cloudFailure=error?.message||'연결할 수 없습니다';$('cloudStatus').textContent='☁ 브라우저 저장만 사용 중';$('cloudStatus').title='Firebase 연결 실패: '+cloudFailure;return null});
 function cloudIdFor(kind,item){if(item?.id&&kind==='collectedThreads')return String(item.id);if(item?.cloudId)return String(item.cloudId);const signature=kind==='dailyDrafts'?`${item?.date||''}|${item?.output||''}|${item?.source||''}`:`${item?.date||''}|${item?.body||item?.postText||item?.posts?.recommend||''}|${item?.link||''}`;let hash=2166136261;for(const char of signature){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619)}return `${kind}-${(hash>>>0).toString(36)}`}
 function mergeCloudItems(kind,...groups){const seen=new Set(),merged=[];for(const group of groups)for(const raw of group||[]){if(!raw||typeof raw!=='object')continue;const item={...raw};if(kind!=='collectedThreads')item.cloudId=cloudIdFor(kind,item);const key=cloudIdFor(kind,item);if(seen.has(key))continue;seen.add(key);merged.push(item)}return merged}
 function storeLocalSnapshot(kind,items){if(kind==='productDrafts'){localStorage.setItem('gift-note-drafts-v2',JSON.stringify(items));drafts=items}else if(kind==='dailyDrafts'){localStorage.setItem(dailyArchiveKey,JSON.stringify(items));dailyDrafts=items}}
@@ -207,7 +207,23 @@ function renderCollectedThreads(){
 }
 function selectedReferencePosts(){return [...selectedReferenceIds].map(id=>collectedThreads.find(post=>post.id===id)).filter(post=>post&&typeof post.text==='string'&&post.text.trim()).slice(0,3)}
 function referencePayload(){
- return selectedReferencePosts().filter(post=>typeof post.id==='string').map(post=>({text:cleanCollectedText(post.text).slice(0,1600)})).filter(post=>post.text);
+ return selectedReferencePosts().map(post=>{
+  const lines=cleanCollectedText(post.text).split('\n');
+  const author=String(post.author||'').replace(/^@/,'');
+  if(author&&lines[0]?.trim().replace(/^@/,'')===author){
+   lines.shift();
+   const timestamp=lines.slice(0,3).findIndex(line=>/^(?:\d+\s*(?:초|분|시간|일|주)(?:\s*전)?|\d{4}-\d{2}-\d{2})$/.test(line.trim()));
+   if(timestamp>=0)lines.splice(0,timestamp+1);
+  }
+  return {text:lines.join('\n').trim().slice(0,1200)};
+ }).filter(post=>post.text);
+}
+function formatDailyDraft(text){
+ const sentences=new Intl.Segmenter('ko',{granularity:'sentence'});
+ return text.split('\n').map(line=>{
+  const segments=Array.from(sentences.segment(line),item=>item.segment.trim());
+  return segments.join('\n').replace(/(\p{Extended_Pictographic}\uFE0F?)[ \t]+(?=[가-힣A-Za-z0-9])/gu,'$1\n');
+ }).join('\n');
 }
 $('collectionSearch').addEventListener('input',renderCollectedThreads);
 
@@ -237,7 +253,8 @@ $('dailyGenerate').addEventListener('click',async()=>{
  button.disabled=dailySource.readOnly=dailyOutput.readOnly=dailyLength.disabled=true;
   dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 말투·글쓰기 0순위로 보내고 있어요.`:'선택한 참고글이 없어요. 입력한 이야기를 바탕으로 작성하고 있어요.';
  try{
-  dailyOutput.value=await requestDailyPost({source,targetLength:Number(dailyLength.value),referenceThreads},AbortSignal.timeout(75000));
+  const generated=await requestDailyPost({source,targetLength:Number(dailyLength.value),referenceThreads},AbortSignal.timeout(75000));
+  dailyOutput.value=formatDailyDraft(generated);
   updateDailyPreview();
    dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 0순위 말투 기준으로 요청해 작성했어요.`:'입력한 내용을 바탕으로 작성했어요.';
  }catch(error){

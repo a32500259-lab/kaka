@@ -207,7 +207,23 @@ function renderCollectedThreads(){
 }
 function selectedReferencePosts(){return [...selectedReferenceIds].map(id=>collectedThreads.find(post=>post.id===id)).filter(post=>post&&typeof post.text==='string'&&post.text.trim()).slice(0,3)}
 function referencePayload(){
- return selectedReferencePosts().filter(post=>typeof post.id==='string').map(post=>({text:cleanCollectedText(post.text).slice(0,1600)})).filter(post=>post.text);
+ return selectedReferencePosts().map(post=>{
+  const lines=cleanCollectedText(post.text).split('\n');
+  const author=String(post.author||'').replace(/^@/,'');
+  if(author&&lines[0]?.trim().replace(/^@/,'')===author){
+   lines.shift();
+   const timestamp=lines.slice(0,3).findIndex(line=>/^(?:\d+\s*(?:초|분|시간|일|주)(?:\s*전)?|\d{4}-\d{2}-\d{2})$/.test(line.trim()));
+   if(timestamp>=0)lines.splice(0,timestamp+1);
+  }
+  return {text:lines.join('\n').trim().slice(0,1200)};
+ }).filter(post=>post.text);
+}
+function formatDailyDraft(text){
+ const sentences=new Intl.Segmenter('ko',{granularity:'sentence'});
+ return text.split('\n').map(line=>{
+  const segments=Array.from(sentences.segment(line),item=>item.segment.trim());
+  return segments.join('\n').replace(/(\p{Extended_Pictographic}\uFE0F?)[ \t]+(?=[가-힣A-Za-z0-9])/gu,'$1\n');
+ }).join('\n');
 }
 $('collectionSearch').addEventListener('input',renderCollectedThreads);
 
@@ -237,7 +253,8 @@ $('dailyGenerate').addEventListener('click',async()=>{
  button.disabled=dailySource.readOnly=dailyOutput.readOnly=dailyLength.disabled=true;
   dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 말투·글쓰기 0순위로 보내고 있어요.`:'선택한 참고글이 없어요. 입력한 이야기를 바탕으로 작성하고 있어요.';
  try{
-  dailyOutput.value=await requestDailyPost({source,targetLength:Number(dailyLength.value),referenceThreads},AbortSignal.timeout(75000));
+  const generated=await requestDailyPost({source,targetLength:Number(dailyLength.value),referenceThreads},AbortSignal.timeout(75000));
+  dailyOutput.value=formatDailyDraft(generated);
   updateDailyPreview();
    dailyStatus.textContent=referenceThreads.length?`선택한 참고글 ${referenceThreads.length}개를 0순위 말투 기준으로 요청해 작성했어요.`:'입력한 내용을 바탕으로 작성했어요.';
  }catch(error){
