@@ -91,6 +91,8 @@ body{--studio-nav-width:196px;padding-left:var(--studio-nav-width);background:#f
 .archive-card p{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;flex:1}
 .archive-actions{display:flex;gap:6px;flex-wrap:wrap}
 .archive-actions button{font-size:12px;padding:6px 8px}
+.archive-actions .archive-delete{color:#a52732}
+.archive-actions .archive-delete:hover{background:#fff0f1;border-color:#e7a7ad}
 
 /* Match the desktop Threads composer shown in the reference: 522px of
    text at 15px, scaled down to fit the preview without changing its wraps. */
