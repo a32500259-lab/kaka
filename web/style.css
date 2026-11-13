@@ -33,6 +33,8 @@
 .reference-top{height:42px;padding:6px 17px;font-size:14px}
 .product-top{height:42px;padding:6px 16px;border:1px solid #e6e1ef;border-radius:99px;background:#fff;color:#55417e;font-size:14px;font-weight:600;white-space:nowrap}
 .product-top[aria-current="step"]{border-color:#d9ccff;background:#f6f2ff;color:#5636ca}
+.direction-heading{flex-wrap:wrap;gap:8px 16px}
+.direction-heading .product-top{flex:none;min-height:34px;height:auto;padding:6px 12px;font-size:12px}
 .edit-top[aria-current="step"]{box-shadow:0 4px 16px #7047ec3a}
 .edit-top{height:55px;padding:9px 26px;font-size:19px}
 .analysis-top{height:52px;padding:8px 22px;font-size:17px}

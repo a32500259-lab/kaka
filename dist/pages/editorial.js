@@ -1,4 +1,4 @@
-import {livingProfile} from './lifestyle.js?v=075bd847cfcbe89e';
+import {livingProfile} from './lifestyle.js?v=5d6ed1e65a92524b';
 // Original editorial examples. Public social posts inform structure only;
 // no third-party captions, identity, or personal experiences are reproduced.
 // Each family has a complete conversation, selection tip and product angle.

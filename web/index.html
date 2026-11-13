@@ -13,8 +13,6 @@
     <span class="top-divider"></span>
     <nav class="top-nav" aria-label="작업실 도구">
       <span class="threads-chip">▱ <b>Threads</b></span>
-      <button class="reference-top" id="openReferencePicker" type="button"><span id="referenceCount">참고 글 0개</span></button>
-      <button class="product-top" id="productImportOpen" type="button" aria-current="step">＋ 상품 링크 가져오기</button>
     </nav>
     <div class="top-actions"><details class="more-tools"><summary aria-label="더 보기">···</summary><div class="more-tools-menu"><button id="saved" type="button">수집한 스레드 <b id="count">0</b></button><button id="rulesNav" type="button">글쓰기 지침</button><span class="ai-status" id="aiConnectionState" role="status">Gemini 연결 확인 중…</span><button id="aiConnect" class="connect-button" type="button">작업실 연결</button></div></details><span class="saved-indicator" id="cloudStatus" role="status" title="클라우드 저장 상태를 확인하고 있어요">☁ Firebase 연결 중…</span></div>
   </header>
@@ -35,7 +33,10 @@
 
       <section class="editor-column" id="productEditor">
         <section class="direction-card" aria-labelledby="directionTitle">
-          <div class="section-heading"><div><h2 id="directionTitle">이번 글의 방향</h2><p>어떤 관점으로 글을 작성할지 선택해 주세요.</p></div></div>
+          <div class="section-heading direction-heading">
+            <div><h2 id="directionTitle">이번 글의 방향</h2><p>어떤 관점으로 글을 작성할지 선택해 주세요.</p></div>
+            <button class="product-top" id="productImportOpen" type="button" aria-current="step">＋ 상품 링크 가져오기</button>
+          </div>
           <p class="product-mode-label">♧　상품 추천</p>
           <div class="two setting-row"><div><label for="occasion">작성 상황(예시)</label><select id="occasion"><option value="auto">상품에 맞게, 매번 새롭게</option></select><p class="help" id="occasionHelp">선물 받을 사람과 고르는 이유를 자연스럽게 이어요.</p></div><div><label for="targetLength">글 길이</label><select id="targetLength" aria-describedby="targetLengthHelp"><option value="100">짧게 · 약 100자</option><option value="200">중간 · 약 200자</option><option value="300">길게 · 약 300자</option></select><p class="help" id="targetLengthHelp">공백 포함 · 링크 제외 · 선택한 길이 ±10% 내외</p></div></div>
           <div hidden id="customOccasionWrap"><label for="customOccasion">어떤 상황인가요?</label><input id="customOccasion" maxlength="140" placeholder="예: 첫 출근을 앞둔 동생에게"></div><input id="age" type="hidden" value="auto"><input id="audience" type="hidden"><input id="angle" type="hidden"><select id="photoCount" hidden aria-hidden="true"><option value="0">0장</option></select>
