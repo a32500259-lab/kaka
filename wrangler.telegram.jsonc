@@ -1,0 +1,18 @@
+{
+  "name": "gift-note-telegram",
+  "main": "worker/telegram-cloud.mjs",
+  "compatibility_date": "2026-11-14",
+  "preview_urls": false,
+  "keep_vars": true,
+  "durable_objects": {"bindings": [{"name": "THREADS_SCHEDULE", "class_name": "ThreadsSchedule"}]},
+  "migrations": [{"tag": "threads-schedule-v1", "new_sqlite_classes": ["ThreadsSchedule"]}],
+  "observability": {"enabled": true, "logs": {"enabled": true}},
+  "queues": {
+    "producers": [
+      {"binding": "TELEGRAM_QUEUE", "queue": "gift-note-telegram"}
+    ],
+    "consumers": [
+      {"queue": "gift-note-telegram", "max_batch_size": 1, "max_retries": 1}
+    ]
+  }
+}
