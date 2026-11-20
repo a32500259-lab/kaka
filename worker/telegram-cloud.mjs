@@ -23,6 +23,10 @@ export default {
         method: 'POST', body: JSON.stringify({input: '예약연결확인'})
       });
       const view = await check.json();
+      const reservationResponse = await env.THREADS_SCHEDULE.getByName('owner').fetch('https://schedule.internal/command', {
+        method: 'POST', body: JSON.stringify({input: '예약목록', messageId: crypto.randomUUID()})
+      });
+      const reservation = await reservationResponse.json();
       if (options.notify !== false) {
         await telegramSend(env, view.text + '\n\n새로 받은 초안 아래에서 번호를 선택해 예약할 수 있어요.',
           fetch, {inline_keyboard: [[{text: '예약목록', callback_data: 'sn:status:list:'}]]});
@@ -56,7 +60,7 @@ export default {
           canceled.text.includes('취소') && listing.text.includes('없어요');
       }
       return Response.json({webhook: 'ready', threadsConnected: view.text.includes('연결 정상'),
-        connection: view.connection, verification});
+        connection: view.connection, reservation: reservation.text, verification});
     }
     if (new URL(request.url).pathname !== '/telegram') return new Response(null, {status: 404});
     if (request.method !== 'POST') return new Response(null, {status: 405});
