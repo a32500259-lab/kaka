@@ -44,6 +44,7 @@ export async function requestGiftPosts(input,signal){
  const data=await requestGeneration(input,signal);
  if(input.referenceThreads?.length&&data.qualityReview?.status!=='passed')throw new Error('말투 심사 통과를 확인하지 못해 새 글을 표시하지 않았어요. 기존 초안은 그대로입니다.');
  if(!data.posts||!['recommend','conversation','guide'].every(k=>typeof data.posts[k]==='string'))throw new Error('AI 글 결과가 올바르지 않습니다.');
+ if(input.draftCount===2&&(!Array.isArray(data.recommendDrafts)||data.recommendDrafts.length!==2||data.recommendDrafts.some(text=>typeof text!=='string'||!text.trim())))throw new Error('상품 추천 초안 두 편을 확인하지 못했어요. 다시 작성해주세요.');
  return data;
 }
 export async function requestDailyPost(input,signal){

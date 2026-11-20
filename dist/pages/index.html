@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#faf9ff">
   <title>선물노트 · 스레드 스튜디오</title>
-  <link href="style.css?v=8295c1682aaa6c37" rel="stylesheet">
+  <link href="style.css?v=551c726c94c8cf2c" rel="stylesheet">
   <script>
     (() => {
-      const current = '8295c1682aaa6c37';
+      const current = '551c726c94c8cf2c';
       const version = new URL('release.json', location.href);
       version.searchParams.set('check', Date.now());
       fetch(version, { cache: 'no-store', signal: AbortSignal.timeout(5000) })
@@ -64,6 +64,7 @@
           <div class="postidentity"><span class="avatar">선</span><div><b>howabout.pick</b><small id="modeHint">상품을 고른 이유와 링크 · 제품 사진 함께 첨부</small></div><span>···</span></div>
           <div class="generation-controls"><button class="edit-top" id="generate" type="button">✎ 내 글 바꾸기</button><span id="generationContext" class="generation-context" aria-live="polite"></span></div>
           <p id="status" class="status-line" role="status" aria-live="polite"></p>
+          <div id="recommendChoices" class="recommend-choices" role="group" aria-label="상품 추천 초안 선택" hidden><button type="button" aria-pressed="true">초안 1</button><button type="button" aria-pressed="false">초안 2</button></div>
           <div class="post-edit-row"><div id="post"><textarea id="copyText" class="posttext" aria-label="스레드에 복사할 전체 글" placeholder="상품을 불러오고 글 만들기를 눌러주세요."></textarea></div><aside id="inlineProductCard" class="inline-product-card"><div class="product-summary"><span class="product-tag">선물 아이템</span><h3 id="summaryName">상품을 불러오면 여기에 보여요</h3><p id="summaryFacts">상품에서 확인한 정보를 바탕으로 글을 작성합니다.</p><a hidden id="summaryLink" rel="noopener noreferrer" target="_blank">상품 원문 ↗</a></div><section class="inline-photo-picker" aria-labelledby="inlinePhotoTitle"><div class="inline-photo-heading"><div><h3 id="inlinePhotoTitle">상품 메인 사진</h3><p>미리 보고 체크한 사진을 추가하세요 · 최대 3장</p></div><strong id="photoSelectionCount">0/3</strong></div><div id="photoPreviewList" class="photo-preview-list" aria-live="polite"><p class="photo-preview-empty">상품 링크를 불러오면 메인 사진이 여기에 최대 3장 보여요.</p></div><p class="photo-rights-note">사진을 다시 게시할 수 있는 범위는 판매자·브랜드 안내를 확인해주세요.</p><div class="inline-photo-actions"><button id="clearInlinePhotos" type="button">선택 해제</button><button id="applyInlinePhotos" class="primary" type="button" disabled>사진을 체크해주세요</button></div></section><details class="photo-section" id="photoSection"><summary id="photoSectionSummary">선택한 사진 저장</summary><div id="photoDownloads" class="photo-downloads"></div><p class="help" id="photoStatus" role="status">상품 링크를 불러오면 메인 페이지 사진이 이곳에 보여요.</p></details></aside></div>
           <div class="rationale" id="rationale" hidden>상품과 참고 글을 불러오면 작성 준비가 돼요.</div>
           <div class="product-link-row" hidden><a id="productLink" rel="noopener noreferrer" target="_blank"></a><span id="lengthHelp" class="help"></span><a id="sourcePhoto" hidden></a><span id="selectedPhotoLabel">선택 전</span></div>
@@ -92,7 +93,7 @@
     </section>
 
     <section hidden id="history"><div class="section-title"><div><h2>스레드 수집글</h2><p class="help">Chrome 확장프로그램에서 모은 게시물이 여기에 표시됩니다.</p></div><button id="closeHistory" type="button">닫기</button></div><p class="collection-status" id="collectionStatus" role="status">Chrome 확장프로그램과 연결하는 중…</p><input id="collectionSearch" type="search" aria-label="수집글 검색" placeholder="수집글 검색"><div class="collection-grid-scroll"><div id="historylist" aria-live="polite"></div></div></section>
-    <section hidden id="rulesPanel"><div class="stage-heading"><span>◇</span><div><h2>우리 계정의 글쓰기 지침</h2><p>2030 선물 큐레이터 · 자연스러운 대화체</p></div></div><p>모든 글은 첫 세 줄을 후킹 → 설명 → 공감 순으로 씁니다.</p><ul><li>구체적인 발견으로 시작하고, 상품 특징과 선물 고민을 이어갑니다.</li><li>문장 단위 줄바꿈, 주제가 전환되면 한 줄을 띄웁니다.</li><li>가격이나 확인되지 않은 사용 후기는 넣지 않습니다.</li><li>큐레이터 수수료 안내는 저장 사진 하단에 한 줄로 표시합니다.</li></ul><a href="writer-prompt.md?v=8295c1682aaa6c37" download>Gemini에 전달하는 글쓰기 지침 ↗</a><p><button id="closeRules" type="button">작업실로 돌아가기</button></p></section>
+    <section hidden id="rulesPanel"><div class="stage-heading"><span>◇</span><div><h2>우리 계정의 글쓰기 지침</h2><p>2030 선물 큐레이터 · 자연스러운 대화체</p></div></div><p>모든 글은 첫 세 줄을 후킹 → 설명 → 공감 순으로 씁니다.</p><ul><li>구체적인 발견으로 시작하고, 상품 특징과 선물 고민을 이어갑니다.</li><li>문장 단위 줄바꿈, 주제가 전환되면 한 줄을 띄웁니다.</li><li>가격이나 확인되지 않은 사용 후기는 넣지 않습니다.</li><li>큐레이터 수수료 안내는 저장 사진 하단에 한 줄로 표시합니다.</li></ul><a href="writer-prompt.md?v=551c726c94c8cf2c" download>Gemini에 전달하는 글쓰기 지침 ↗</a><p><button id="closeRules" type="button">작업실로 돌아가기</button></p></section>
     <section id="draftArchive" hidden aria-labelledby="archiveTitle">
       <h2 id="archiveTitle">내 글 보관함</h2>
       <div class="archive-filters" role="group" aria-label="저장한 글 종류">
@@ -120,7 +121,7 @@
   </dialog>
   <dialog id="aiConnectionDialog"><form id="aiConnectionForm"><div class="dialog-heading"><div><h2>내 작업실 연결</h2><p class="help">Gemini 무료 연결을 확인해요.</p></div></div><label for="writerConnectionCode">작업실 연결 코드</label><input id="writerConnectionCode" type="password" autocomplete="off" required><label class="remember-connection"><input id="rememberWriterConnection" type="checkbox"> 이 브라우저에 연결 유지</label><p class="help">API 키는 서버 비밀 설정에서만 사용합니다.</p><p id="aiConnectionMessage" role="status"></p><div class="dialog-actions"><button id="aiConnectionClose" type="button">닫기</button><button type="submit" class="primary">연결 확인</button></div></form></dialog>
 
-  <script src="app.js?v=8295c1682aaa6c37" type="module"></script>
-  <script src="workflow.js?v=8295c1682aaa6c37" type="module"></script>
+  <script src="app.js?v=551c726c94c8cf2c" type="module"></script>
+  <script src="workflow.js?v=551c726c94c8cf2c" type="module"></script>
 </body>
 </html>

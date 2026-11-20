@@ -1,6 +1,6 @@
-import {sceneFor} from './scene-options.js?v=8295c1682aaa6c37';
-import {requestDailyPost} from './ai-client.js?v=8295c1682aaa6c37';
-import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=8295c1682aaa6c37';
+import {sceneFor} from './scene-options.js?v=551c726c94c8cf2c';
+import {requestDailyPost} from './ai-client.js?v=551c726c94c8cf2c';
+import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=551c726c94c8cf2c';
 const postForMode=current=>current?.posts?current.posts[current.mode||'recommend']||'':current?.postText??[...(current?.sections||[]),current?.link].filter(Boolean).join('\n\n');
 const $=id=>document.getElementById(id);
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
@@ -9,7 +9,7 @@ let loadedUrl='',current=null,drafts=[],loadedProduct=null,generating=false,gene
 try{drafts=JSON.parse(localStorage.getItem('gift-note-drafts-v2')||'[]');if(!Array.isArray(drafts))drafts=[]}catch{}
 $('count').textContent='0';
 let cloudApi=null,cloudFailure='',remoteThreads=[],extensionThreadsReady=false;const pendingThreadDeletes=new Map();
-const cloudApiReady=import('./firebase-store.js?v=8295c1682aaa6c37').then(async api=>{await api.initializeCloud();cloudApi=api;$('cloudStatus').textContent='☁ 클라우드 저장 연결됨';$('cloudStatus').title='이 브라우저의 익명 Firebase 계정에 저장합니다. 다른 기기 공유는 로그인 연결 후 사용할 수 있어요.';return api}).catch(error=>{cloudFailure=error?.message||'연결할 수 없습니다';$('cloudStatus').textContent='☁ 브라우저 저장만 사용 중';$('cloudStatus').title='Firebase 연결 실패: '+cloudFailure;return null});
+const cloudApiReady=import('./firebase-store.js?v=551c726c94c8cf2c').then(async api=>{await api.initializeCloud();cloudApi=api;$('cloudStatus').textContent='☁ 클라우드 저장 연결됨';$('cloudStatus').title='이 브라우저의 익명 Firebase 계정에 저장합니다. 다른 기기 공유는 로그인 연결 후 사용할 수 있어요.';return api}).catch(error=>{cloudFailure=error?.message||'연결할 수 없습니다';$('cloudStatus').textContent='☁ 브라우저 저장만 사용 중';$('cloudStatus').title='Firebase 연결 실패: '+cloudFailure;return null});
 function cloudIdFor(kind,item){if(item?.id&&kind==='collectedThreads')return String(item.id);if(item?.cloudId)return String(item.cloudId);const signature=kind==='dailyDrafts'?`${item?.date||''}|${item?.output||''}|${item?.source||''}`:`${item?.date||''}|${item?.body||item?.postText||item?.posts?.recommend||''}|${item?.link||''}`;let hash=2166136261;for(const char of signature){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619)}return `${kind}-${(hash>>>0).toString(36)}`}
 const deletedDraftsKey='gift-note-deleted-drafts';
 const deletedThreadsKey='gift-note-deleted-collected-threads';
@@ -87,7 +87,7 @@ function safeImage(raw){try{const u=new URL(raw);return u.protocol==='https:'&&!
 function resize(t){t.style.height='auto';t.style.height=t.scrollHeight+4+'px'}
 let requestNumber=0,loading=false;
 function inputLink(){const text=$('url').value.trim();return text.match(/https:\/\/gift-link\.kakao\.com\/c\/[a-zA-Z0-9]+(?:\?[^\s<>\]\)]+)?/)?.[0]||text}
-function clearResult(message){current=null;$('post').replaceChildren();const placeholder=document.createElement('textarea');placeholder.id='copyText';placeholder.className='posttext';placeholder.setAttribute('aria-label','스레드에 복사할 전체 글');placeholder.placeholder='상품을 불러오고 글 만들기를 눌러주세요.';$('post').append(placeholder);$('photoDownloads').replaceChildren();$('textCount').textContent='';$('lengthHelp').textContent='';$('copyStatus').textContent='';$('photoStatus').textContent='';$('productLink').removeAttribute('href');$('productLink').textContent='';$('rationale').textContent=message;$('copyBtn').disabled=true;$('save').disabled=true;$('sourcePhoto').hidden=true;updatePhonePreview()}
+function clearResult(message){current=null;$('recommendChoices').hidden=true;$('post').replaceChildren();const placeholder=document.createElement('textarea');placeholder.id='copyText';placeholder.className='posttext';placeholder.setAttribute('aria-label','스레드에 복사할 전체 글');placeholder.placeholder='상품을 불러오고 글 만들기를 눌러주세요.';$('post').append(placeholder);$('photoDownloads').replaceChildren();$('textCount').textContent='';$('lengthHelp').textContent='';$('copyStatus').textContent='';$('photoStatus').textContent='';$('productLink').removeAttribute('href');$('productLink').textContent='';$('rationale').textContent=message;$('copyBtn').disabled=true;$('save').disabled=true;$('sourcePhoto').hidden=true;updatePhonePreview()}
 async function loadProduct(){
  generationController?.abort();const raw=inputLink(),serial=++requestNumber;loadedProduct=null;photoCandidates=[];selectedPhotoSources.clear();renderPhotoChoices();syncPhotoOptions();updatePhotoSelectionUi();syncGenerationContext();
  if(!validLink(raw)){loading=false;loadedUrl='';$('load').disabled=false;$('load').textContent='상품 불러오기';$('generate').disabled=false;$('importStatus').textContent='카카오 큐레이터 링크를 넣어주세요. 공유 문구 전체를 붙여넣어도 됩니다.';clearResult('올바른 상품 주소를 기다리고 있어요.');return false}
@@ -136,11 +136,11 @@ function applyInlinePhotoSelection(){if(!selectedPhotoSources.size){$('photoStat
 function updatePhonePreview(){const link=$('phoneLink');if(link)link.hidden=true;const text=$('phoneText');if(text)text.textContent=exportText()||'상품을 불러오고 글을 만들면 Threads 미리보기가 여기에 보여요.';const photos=$('phonePhotos');if(!photos)return;photos.replaceChildren();const selected=imageSetSafe();selected.slice(0,3).forEach(photo=>{const img=document.createElement('img');img.alt=photo.alt;img.src=apiUrl('/api/image?url='+encodeURIComponent(photo.src));photos.append(img)})}
 function imageSetSafe(){try{return imageSet()}catch{return []}}
 function syncOccasion(){const value=$('occasion').value;$('occasionHelp').textContent=value==='auto'?'받는 사람과 선물 고르는 이유가 한 흐름으로 이어지게 써요.':value==='직접'?'적어주신 상황을 글의 출발점으로 사용해요.':sceneFor(value)?.hint||'상품의 쓰임과 선택한 상황을 함께 생각해요.';$('customOccasionWrap').hidden=value!=='직접'}
-function exportText(){return postForMode(current).replaceAll(DISCLOSURE,'').replace(/(^|\n)(https:\/\/gift-link\.kakao\.com\/c\/[^\s]+)/g,'$1카카오톡 선물하기 : $2').replace(/\n{3,}/g,'\n\n').trim()}
+function exportText(){return postForMode(current).replaceAll(DISCLOSURE,'').replace(/\n{3,}/g,'\n\n').trim()}
 function updateCount(){
  const text=exportText();
  const count=Array.from(text).length;
- const body=text.replace(/^카카오톡 선물하기\s*:\s*https?:\/\/\S+\s*$/gm,'').trim().replace(/\r?\n/g,'');
+ const body=text.replace(/\n\n[^\n]+\nhttps:\/\/gift-link\.kakao\.com\/c\/\S+\s*$/,'').replace(/^카카오톡 선물하기\s*:\s*https?:\/\/\S+\s*$/gm,'').trim().replace(/\r?\n/g,'');
  const bodyCount=Array.from(body).length;
  const target=Number(current?.targetLength||$('targetLength').value||100);
  $('textCount').textContent=`본문 ${bodyCount}자 · 목표 ${target}자 / 링크 포함 ${count}자`;
@@ -168,11 +168,17 @@ function preparePhoto(photo){
 }
 function render(){
  if(!current)return;syncPhotoOptions();const selling=!current.posts||current.mode==='recommend';$('photoSection').hidden=!selling;$('productLink').hidden=!selling;
+ const choices=$('recommendChoices');
+ choices.hidden=!selling||current.recommendDrafts?.length!==2;
+ choices.querySelectorAll('button').forEach((button,index)=>{
+  button.setAttribute('aria-pressed',String(index===(current.selectedRecommend||0)));
+  button.disabled=Boolean(current.dirty);
+ });
  document.querySelectorAll('[data-kind]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.kind===(current.mode||'recommend')));b.disabled=!current.posts});
  $('modeHint').textContent=selling?'상품을 고른 이유와 링크 · 제품 사진 함께 첨부':'생활 주제로 대화하는 글 · 상품 링크와 제품 사진 없이 복사';
  $('copyBtn').disabled=Boolean(current.dirty);$('save').disabled=Boolean(current.dirty);$('post').replaceChildren();$('photoDownloads').replaceChildren();$('rationale').textContent=current.rationale+(current.provider?' · '+current.provider+' / '+current.model:' · 과거 저장 초안');syncOccasion();
  const ta=document.createElement('textarea');ta.id='copyText';ta.className='posttext';ta.setAttribute('aria-label','스레드에 복사할 전체 글');ta.value=exportText();
- ta.addEventListener('input',()=>{if(current.posts)current.posts[current.mode]=ta.value;else current.postText=ta.value;resize(ta);updateCount();updatePhonePreview()});$('post').appendChild(ta);updateCount();
+ ta.addEventListener('input',()=>{if(current.posts){current.posts[current.mode]=ta.value;if(current.mode==='recommend'&&current.recommendDrafts)current.recommendDrafts[current.selectedRecommend||0]=ta.value}else current.postText=ta.value;resize(ta);updateCount();updatePhonePreview()});$('post').appendChild(ta);updateCount();
  (selling?current.photos:[]).forEach((photo,i)=>{
   const figure=document.createElement('figure'),frame=document.createElement('div'),img=document.createElement('img');figure.className='productphoto';frame.className='photowindow';
   img.alt=photo.alt+' · 하단 수수료 안내 포함';frame.textContent='안내 문구를 사진에 넣고 있어요…';figure.appendChild(frame);
@@ -200,10 +206,10 @@ async function generate(){
   const referenceThreads=referencePayload();
   if(referenceThreads.length){button.textContent='작성·말투 심사 중…';$('status').textContent='완성글을 원문과 별도로 대조합니다. 불합격이면 최대 2회 다시 작성하며, 통과한 글만 표시해요. 무료 한도·혼잡 오류에서는 중단합니다.'}
   $('generationContext').textContent=`참고 글 ${referenceThreads.length}개 · 후킹 → 설명 → 공감 · 가격 제외`;
-  const result=await requestGiftPosts({...input,link,visuals,recentDrafts,referenceThreads},controller.signal);
+  const result=await requestGiftPosts({...input,link,visuals,recentDrafts,referenceThreads,draftCount:2,naturalLinkEnding:true},controller.signal);
   if(controller.signal.aborted||serial!==requestNumber||inputLink()!==link)return;
   if(['facts','age','occasion','customOccasion','targetLength'].some(id=>$(id).value!==input[id])){$('status').textContent='작성 중 선택이 바뀌었어요. 다시 만들기를 눌러주세요.';return}
-  const photos=imageSet();current={...result,mode:'recommend',sections:[result.posts.recommend],photos,link,title:loadedProduct.name};
+  const photos=imageSet();current={...result,selectedRecommend:0,mode:'recommend',sections:[result.posts.recommend],photos,link,title:loadedProduct.name};
   recentDrafts.push(result.posts.recommend);if(recentDrafts.length>2)recentDrafts.shift();render();window.dispatchEvent(new Event('content-ready'));
   $('status').textContent=`Gemini가 상품 메인 사진 ${visualProduct.images.length}장을 확인해 새로 작성했어요 · 사진 ${result.visualSegments}개 구간${result.referenceStyle?` · 참고한 말투 · ${result.referenceStyle}`:''}`;
  }catch(error){
@@ -219,6 +225,12 @@ $('aiConnect').onclick=showConnection;$('aiConnectionClose').onclick=()=>$('aiCo
 $('aiConnectionForm').onsubmit=async event=>{event.preventDefault();const value=$('writerConnectionCode').value;if(!value.trim())return;$('aiConnectionMessage').textContent='연결 확인 중…';connectWriter(value,$('rememberWriterConnection').checked);try{const status=await writerStatus();updateAiStatus(status);if(!status.configured)throw new Error('서버의 Gemini 무료 연결 설정을 확인해야 합니다.');if(!status.connected)throw new Error('연결 코드가 맞지 않습니다.');$('writerConnectionCode').value='';$('aiConnectionDialog').close();$('status').textContent='Gemini 연결을 확인했어요. 글 만들기를 눌러주세요.'}catch(error){disconnectWriter();$('aiConnectionMessage').textContent=error.message}};
 writerStatus().then(updateAiStatus).catch(()=>{$('aiConnectionState').textContent='Gemini 연결 확인 필요'});
 $('load').onclick=loadProduct;$('generate').onclick=generate;
+$('recommendChoices').querySelectorAll('button').forEach((button,index)=>button.onclick=()=>{
+ if(generating||!current?.recommendDrafts?.[index])return;
+ current.selectedRecommend=index;
+ current.posts.recommend=current.recommendDrafts[index];
+ render();
+});
 $('url').addEventListener('input',()=>{if(inputLink()!==loadedUrl){generationController?.abort();clearResult('새 주소를 입력했어요. 불러오기를 눌러주세요.')}});
 $('url').addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();loadProduct().then(ok=>{if(ok)window.dispatchEvent(new Event('product-loaded'))})}});
 for(const id of fields.filter(id=>id!=='url'&&id!=='photoCount'))$(id).addEventListener('input',()=>{if(current){current.dirty=true;$('copyBtn').disabled=true;$('save').disabled=true;$('status').textContent='입력이 바뀌었어요. 추천 글 만들기를 눌러 반영해주세요.'}});
