@@ -173,12 +173,14 @@ function render(){
  choices.querySelectorAll('button').forEach((button,index)=>{
   button.setAttribute('aria-pressed',String(index===(current.selectedRecommend||0)));
   button.disabled=Boolean(current.dirty);
+  button.querySelector('.draft-preview').textContent=current.recommendDrafts?.[index]||'';
+  button.querySelector('small').textContent=index===(current.selectedRecommend||0)?'선택됨 · 아래에서 수정/복사':'이 초안 선택';
  });
  document.querySelectorAll('[data-kind]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.kind===(current.mode||'recommend')));b.disabled=!current.posts});
  $('modeHint').textContent=selling?'상품을 고른 이유와 링크 · 제품 사진 함께 첨부':'생활 주제로 대화하는 글 · 상품 링크와 제품 사진 없이 복사';
  $('copyBtn').disabled=Boolean(current.dirty);$('save').disabled=Boolean(current.dirty);$('post').replaceChildren();$('photoDownloads').replaceChildren();$('rationale').textContent=current.rationale+(current.provider?' · '+current.provider+' / '+current.model:' · 과거 저장 초안');syncOccasion();
  const ta=document.createElement('textarea');ta.id='copyText';ta.className='posttext';ta.setAttribute('aria-label','스레드에 복사할 전체 글');ta.value=exportText();
- ta.addEventListener('input',()=>{if(current.posts){current.posts[current.mode]=ta.value;if(current.mode==='recommend'&&current.recommendDrafts)current.recommendDrafts[current.selectedRecommend||0]=ta.value}else current.postText=ta.value;resize(ta);updateCount();updatePhonePreview()});$('post').appendChild(ta);updateCount();
+ ta.addEventListener('input',()=>{if(current.posts){current.posts[current.mode]=ta.value;if(current.mode==='recommend'&&current.recommendDrafts){current.recommendDrafts[current.selectedRecommend||0]=ta.value;choices.querySelectorAll('.draft-preview')[current.selectedRecommend||0].textContent=ta.value}}else current.postText=ta.value;resize(ta);updateCount();updatePhonePreview()});$('post').appendChild(ta);updateCount();
  (selling?current.photos:[]).forEach((photo,i)=>{
   const figure=document.createElement('figure'),frame=document.createElement('div'),img=document.createElement('img');figure.className='productphoto';frame.className='photowindow';
   img.alt=photo.alt+' · 하단 수수료 안내 포함';frame.textContent='안내 문구를 사진에 넣고 있어요…';figure.appendChild(frame);

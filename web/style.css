@@ -138,3 +138,10 @@ body{--studio-nav-width:196px;padding-left:var(--studio-nav-width);background:#f
 .recommend-choices button{padding:8px 18px;border:1px solid var(--line);border-radius:10px;background:var(--paper,#fff);color:inherit;cursor:pointer}
 .recommend-choices button[aria-pressed="true"]{border-color:#7540ff;background:#f0eaff;color:#5224d8;font-weight:700}
 .recommend-choices button:focus-visible{outline:2px solid #7540ff;outline-offset:3px}
+
+/* Compare both product drafts without hiding either post. */
+.recommend-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:stretch}
+.recommend-choices button{display:flex;flex-direction:column;align-items:stretch;text-align:left;padding:16px;min-width:0;gap:12px;font:inherit}
+.recommend-choices strong{font-size:15px}
+.recommend-choices .draft-preview{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.65;font-weight:400;color:var(--ink,#242131);font-size:14px;flex:1}
+.recommend-choices small{font-size:12px;font-weight:600;color:#6634dd}

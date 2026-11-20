@@ -1,6 +1,6 @@
-import {sceneFor} from './scene-options.js?v=551c726c94c8cf2c';
-import {requestDailyPost} from './ai-client.js?v=551c726c94c8cf2c';
-import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=551c726c94c8cf2c';
+import {sceneFor} from './scene-options.js?v=11c150dda0582114';
+import {requestDailyPost} from './ai-client.js?v=11c150dda0582114';
+import {apiUrl,writerStatus,connectWriter,disconnectWriter,hasWriterConnection,prepareVisuals,requestGiftPosts} from './ai-client.js?v=11c150dda0582114';
 const postForMode=current=>current?.posts?current.posts[current.mode||'recommend']||'':current?.postText??[...(current?.sections||[]),current?.link].filter(Boolean).join('\n\n');
 const $=id=>document.getElementById(id);
 const DISCLOSURE='이 포스팅은 선물하기 큐레이터 활동의 일환으로, 주문 발생 시 일정액의 수수료를 제공받습니다.';
@@ -9,7 +9,7 @@ let loadedUrl='',current=null,drafts=[],loadedProduct=null,generating=false,gene
 try{drafts=JSON.parse(localStorage.getItem('gift-note-drafts-v2')||'[]');if(!Array.isArray(drafts))drafts=[]}catch{}
 $('count').textContent='0';
 let cloudApi=null,cloudFailure='',remoteThreads=[],extensionThreadsReady=false;const pendingThreadDeletes=new Map();
-const cloudApiReady=import('./firebase-store.js?v=551c726c94c8cf2c').then(async api=>{await api.initializeCloud();cloudApi=api;$('cloudStatus').textContent='☁ 클라우드 저장 연결됨';$('cloudStatus').title='이 브라우저의 익명 Firebase 계정에 저장합니다. 다른 기기 공유는 로그인 연결 후 사용할 수 있어요.';return api}).catch(error=>{cloudFailure=error?.message||'연결할 수 없습니다';$('cloudStatus').textContent='☁ 브라우저 저장만 사용 중';$('cloudStatus').title='Firebase 연결 실패: '+cloudFailure;return null});
+const cloudApiReady=import('./firebase-store.js?v=11c150dda0582114').then(async api=>{await api.initializeCloud();cloudApi=api;$('cloudStatus').textContent='☁ 클라우드 저장 연결됨';$('cloudStatus').title='이 브라우저의 익명 Firebase 계정에 저장합니다. 다른 기기 공유는 로그인 연결 후 사용할 수 있어요.';return api}).catch(error=>{cloudFailure=error?.message||'연결할 수 없습니다';$('cloudStatus').textContent='☁ 브라우저 저장만 사용 중';$('cloudStatus').title='Firebase 연결 실패: '+cloudFailure;return null});
 function cloudIdFor(kind,item){if(item?.id&&kind==='collectedThreads')return String(item.id);if(item?.cloudId)return String(item.cloudId);const signature=kind==='dailyDrafts'?`${item?.date||''}|${item?.output||''}|${item?.source||''}`:`${item?.date||''}|${item?.body||item?.postText||item?.posts?.recommend||''}|${item?.link||''}`;let hash=2166136261;for(const char of signature){hash^=char.charCodeAt(0);hash=Math.imul(hash,16777619)}return `${kind}-${(hash>>>0).toString(36)}`}
 const deletedDraftsKey='gift-note-deleted-drafts';
 const deletedThreadsKey='gift-note-deleted-collected-threads';
@@ -173,12 +173,14 @@ function render(){
  choices.querySelectorAll('button').forEach((button,index)=>{
   button.setAttribute('aria-pressed',String(index===(current.selectedRecommend||0)));
   button.disabled=Boolean(current.dirty);
+  button.querySelector('.draft-preview').textContent=current.recommendDrafts?.[index]||'';
+  button.querySelector('small').textContent=index===(current.selectedRecommend||0)?'선택됨 · 아래에서 수정/복사':'이 초안 선택';
  });
  document.querySelectorAll('[data-kind]').forEach(b=>{b.setAttribute('aria-pressed',String(b.dataset.kind===(current.mode||'recommend')));b.disabled=!current.posts});
  $('modeHint').textContent=selling?'상품을 고른 이유와 링크 · 제품 사진 함께 첨부':'생활 주제로 대화하는 글 · 상품 링크와 제품 사진 없이 복사';
  $('copyBtn').disabled=Boolean(current.dirty);$('save').disabled=Boolean(current.dirty);$('post').replaceChildren();$('photoDownloads').replaceChildren();$('rationale').textContent=current.rationale+(current.provider?' · '+current.provider+' / '+current.model:' · 과거 저장 초안');syncOccasion();
  const ta=document.createElement('textarea');ta.id='copyText';ta.className='posttext';ta.setAttribute('aria-label','스레드에 복사할 전체 글');ta.value=exportText();
- ta.addEventListener('input',()=>{if(current.posts){current.posts[current.mode]=ta.value;if(current.mode==='recommend'&&current.recommendDrafts)current.recommendDrafts[current.selectedRecommend||0]=ta.value}else current.postText=ta.value;resize(ta);updateCount();updatePhonePreview()});$('post').appendChild(ta);updateCount();
+ ta.addEventListener('input',()=>{if(current.posts){current.posts[current.mode]=ta.value;if(current.mode==='recommend'&&current.recommendDrafts){current.recommendDrafts[current.selectedRecommend||0]=ta.value;choices.querySelectorAll('.draft-preview')[current.selectedRecommend||0].textContent=ta.value}}else current.postText=ta.value;resize(ta);updateCount();updatePhonePreview()});$('post').appendChild(ta);updateCount();
  (selling?current.photos:[]).forEach((photo,i)=>{
   const figure=document.createElement('figure'),frame=document.createElement('div'),img=document.createElement('img');figure.className='productphoto';frame.className='photowindow';
   img.alt=photo.alt+' · 하단 수수료 안내 포함';frame.textContent='안내 문구를 사진에 넣고 있어요…';figure.appendChild(frame);

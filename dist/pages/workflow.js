@@ -1,4 +1,4 @@
-import {scenes} from './scene-options.js?v=551c726c94c8cf2c';
+import {scenes} from './scene-options.js?v=11c150dda0582114';
 const $=id=>document.getElementById(id);
 const occasion=$('occasion');occasion.replaceChildren();
 const automatic=document.createElement('option');automatic.value='auto';automatic.textContent='상품에 맞게, 매번 새롭게';occasion.append(automatic);
